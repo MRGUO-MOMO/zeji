@@ -18,10 +18,11 @@ const BRANCH2ZODIAC = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '�
 const LIU_CHONG = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 申: '寅',
                     卯: '酉', 酉: '卯', 辰: '戌', 戌: '辰', 巳: '亥', 亥: '巳' };
 
-// 节假日 —— 法定日择期一般照常，但需跟产科确认
-const HOLIDAYS = new Set(['01-01', '02-16', '02-17', '02-18', '02-19', '02-20',
-  '04-04', '04-05', '04-06', '05-01', '05-02', '05-03', '06-19', '06-20', '06-21',
-  '10-01', '10-02', '10-03', '10-04', '10-05', '10-06', '10-07']);
+// 不再判断「医院能不能排得上」。
+// 每个医院的排班、手术室档期、主刀安排都不一样，我们没资格替它下结论 ——
+// 那是她拿着这份结果去跟产科商量的事。我们只负责把「哪天哪个时辰吉、为什么吉」讲清楚。
+// （原来这里有个 HOLIDAYS 列表 + hospitalNote()，会给节假日/周末/周一扣分并标注
+//   「需确认/较忙/正常」，已删除：那是在猜医院，而且猜错了会误导她。）
 
 /* ---------------------------------- 日评估 --------------------------------- */
 function assessDay(day, parents) {
@@ -50,28 +51,15 @@ function rankHours(day, dayScore, parents) {
   });
 }
 
-function pickHours(day, dayScore, parents, want = 3) {
-  return rankHours(day, dayScore, parents)
-    .filter(x => x.feasible && ![0, 6, 12].includes(x.idx) && x.lucky === '吉')
-    .sort((a, b) => (a.idx !== 5) - (b.idx !== 5) || b.score - a.score)
-    .slice(0, want);
-}
-
-/* -------------------------------- 现实约束 -------------------------------- */
-function hospitalNote(day) {
-  const d = new Date(day.d + 'T00:00:00');
-  const wd = d.getDay();                              // 0 = 周日
-  if (HOLIDAYS.has(day.d.slice(5)))
-    return { tag: '需确认', adj: -3,
-      msg: '法定节假日。产科 24 小时值班、照常接生，节假日也能手术；要问的是「能不能安排择期」和「主刀是不是你指定的那位」' };
-  if (wd === 0)
-    return { tag: '需确认', adj: -3,
-      msg: '周日。产科节假日照常值班，通常可以安排；提前确认主刀医生是否为你指定的那位' };
-  if (wd === 6)
-    return { tag: '可安排', adj: -2, msg: '周六。多数医院可安排，提前跟产科约手术室档期' };
-  if (wd === 1)
-    return { tag: '较忙', adj: -4, msg: '周一上午是全周手术高峰，手术室偏紧；不介意排到下午或换一天的话可以问一下' };
-  return { tag: '正常', adj: 0, msg: '工作日，正常排期' };
+/* 这一天的全部时辰，吉在前、凶在后 —— 她可以自己挑。
+   以前只列「吉」的，结果是：没被列出来的时段她不知道是好是坏，
+   反而要追问「未时呢？」。现在全给，并标注吉凶和理由。
+   （原来这里还有一个 pickHours()，会按「医院排不排得上」过滤时辰，已删除。） */
+function hourList(day, dayScore, parents) {
+  return rankHours(day, dayScore, parents).sort((a, b) =>
+    (b.lucky === '吉') - (a.lucky === '吉') ||
+    (a.idx !== 5) - (b.idx !== 5) ||
+    b.score - a.score);
 }
 
 function gestationalCheck(dateStr, dueStr) {
@@ -84,13 +72,8 @@ function gestationalCheck(dateStr, dueStr) {
   return { ok: true, msg: `约孕 ${week.toFixed(1)} 周（比预产期早 ${daysBefore} 天），在可择期范围内` };
 }
 
-function leadNote(dateStr, todayStr) {
-  if (!todayStr) return '';
-  const gap = Math.round((new Date(dateStr + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
-  if (gap < 0) return '日期已过';
-  if (gap < 10) return `距今天仅 ${gap} 天 —— 时间偏紧，今天就该联系产科确认手术室`;
-  return `距今天 ${gap} 天，来得及走正常预约流程`;
-}
+// （原来的 leadNote() 会写「距今天 N 天，来得及走正常预约流程」——
+//   这也是在替医院判断排期，已删除。）
 
 function addDay(s, n) {
   // 不要用 toISOString()：它按 UTC 输出，在 UTC+8 会让日期倒退一天，
@@ -165,9 +148,9 @@ const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', 
 
 function renderTable(rows) {
   return `<table class="tbl">
-    <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"></colgroup>
+    <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup>
     <thead><tr>
-    <th>日期</th><th>星期</th><th>命理</th><th>医院</th><th>综合</th><th>孕周</th><th>冲煞</th>
+    <th>日期</th><th>星期</th><th>吉凶</th><th>孕周</th><th>冲煞</th>
   </tr></thead><tbody>${rows.map((r, i) => {
     // 冲煞这一列是收费点：免费版只显示锁定标记。
     // 冲煞本身对外可以查到，但「有没有冲到你们两个人」必须知道生肖才能算。
@@ -182,41 +165,41 @@ function renderTable(rows) {
     const detail = rs.length
       ? `<ul class="reasons">${rs.map(([c, x]) => `<li class="${c}">${esc(x)}</li>`).join('')}</ul>`
       : `<div class="note">这天没有特别需要说明的。</div>`;
+    // 不再有「医院」和「综合」两列：
+    //   「医院」是我们的猜测，删掉；「综合」= 命理 + 医院加减分，医院一删它就和命理重复了。
     return `<tr class="row" data-i="${i}">
     <td>${r.day.d.slice(5)}<span class="caret">▾</span></td><td>${r.day.wd}</td>
     <td><span class="tier t-${r.a.tier}">${r.a.tier}</span> ${r.a.score}</td>
-    <td>${r.h.tag}</td><td><b>${r.final}</b></td>
     <td title="${esc(r.gest.msg)}">${r.gest.ok ? '✓' : '⛔'}</td>
     <td>${clash}</td>
   </tr>
-  <tr class="exp"><td colspan="7">${detail}</td></tr>`;
+  <tr class="exp"><td colspan="5">${detail}</td></tr>`;
   }).join('')}</tbody></table>`;
 }
 
 function renderPlan(letter, r, parents) {
   const a = r.a, day = r.day;
-  const hrs = pickHours(day, a.score, parents);
+  const hrs = hourList(day, a.score, parents);
+  const good = hrs.filter(x => x.lucky === '吉').length;
   return `<div class="plan">
     <div class="plan-h"><span class="badge">方案 ${letter}${letter === 'A' ? ' · 首选' : ''}</span>
       <span class="plan-date">${day.d}（${day.wd}）</span></div>
     <div class="plan-sub">${esc(day.ly)}${esc(day.l)}　${esc(day.g)}</div>
-    <div class="kv"><span>命理</span><b class="t-${a.tier}">${a.tier} · ${a.score} 分</b></div>
+    <div class="kv"><span>吉凶</span><b class="t-${a.tier}">${a.tier} · ${a.score} 分</b></div>
     <ul class="reasons">${a.reasonsFor.slice(0, 3).map(x => `<li class="ok">${esc(x)}</li>`).join('')}
       ${a.reasonsAgainst.slice(0, 3).map(x => `<li class="no">${esc(x)}</li>`).join('')}</ul>
     <div class="kv"><span>二十八宿</span><b>${esc(day.star)}</b></div>
     <div class="kv"><span>孕周</span><b>${r.gest.ok ? '✅' : '⛔'} ${esc(r.gest.msg)}</b></div>
-    <div class="kv"><span>医院</span><b>${r.h.tag}</b></div>
-    <div class="note">${esc(r.h.msg)}</div>
-    ${r.lead ? `<div class="note">排期：${esc(r.lead)}</div>` : ''}
-    ${hrs.length && UNLOCKED ? `<div class="hrs"><div class="hrs-t">推荐时辰（只列「吉」且医院排得上的）</div>
-      ${hrs.map((x, i) => `<div class="hr"><span class="hr-i">${i + 1}</span>
-        <b>${x.idx === 5 ? '★' : ''}${esc(x.label)}</b>
+    ${UNLOCKED ? `<div class="hrs">
+      <div class="hrs-t">这一天的时辰（${good} 个吉时，其余为凶）</div>
+      ${hrs.map(x => `<div class="hr"><span class="hr-l ${x.lucky === '吉' ? 'ok' : 'no'}">${x.lucky}</span>
+        <b>${esc(x.label)}</b>
         <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
-        <span class="hr-l">${x.lucky}</span>
-        ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}</div>`).join('')}
-      <div class="note">这天其余时段，在这套体系里判为「凶」，或者医院排不上，所以没有列出来。</div>
+        ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}
+        ${x.extreme ? `<span class="hr-r">极阴极阳，传统上避开；产科医生也普遍不排</span>` : ''}</div>`).join('')}
+      <div class="note">吉凶是按当天的值日神、建除、星宿和时辰干支的刑冲合害推的，理由都写在每一行后面。哪个时段你们方便，你们自己定。</div>
     </div>`
-    : `<div class="hourlock">🔒 <b>最佳时辰已锁定</b> —— 解锁后会给出这一天可以安排的吉时，已经排除极阴极阳的时辰，也排除医院根本排不上的时段。</div>`}
+    : `<div class="hourlock">🔒 <b>这一天的时辰吉凶已锁定</b> —— 解锁后会逐个列出每个时辰的吉凶和理由，你可以拿着它去跟产科对档期。</div>`}
   </div>`;
 }
 
@@ -234,8 +217,9 @@ function render(res) {
     <li>这一天能不能排择期手术（部分医院要求提前 3–5 天提交手术申请单）</li>
     <li>主刀是不是你指定的那位医生</li>
     <li>如果当天有急诊插台，我的手术会不会被推后 —— 手术台永远急诊优先</li></ol>
-    <p class="note">节假日与周末不排除在推荐之外：产科 24 小时值班、照常接生，公立三甲周末手术资源通常较充足，基层或私立医院可能优先保障急诊、择期顺延到工作日 —— 这只能问你的医院。</p>
-    <p class="note">时辰已避开子时与午时（极阴极阳），以及下班后的时段（值班力量弱，只做急诊）。</p>
+    <p class="note">上面这些只有你的医院能回答。我们不做任何「这家医院排不排得上」的推测 —— 每个医院的排班、手术室档期、主刀安排都不一样，猜了反而会误导你。你拿着这份排序去问就行。</p>
+    <p class="note">表中星期与日期照实列出，不做「周末/节假日能不能安排」的判断，同样是这个原因。</p>
+    <p class="note">子时（23:00–01:00）与午时（11:00–13:00）是极阴极阳的时辰，传统择日里避开；妇产科医生也普遍不排这两个时段（子时人体最疲劳，手术风险偏高）。</p>
     <p class="note">最终日期与时辰请以产科医生和手术室排期为准，本结果仅作传统民俗参考。</p>
   </div>`);
   const el = document.getElementById('result');
@@ -286,10 +270,11 @@ function evaluate() {
     const gest = (Q && Q.get('nodue'))
       ? { ok: true, msg: '按医生给的窗口计算，未做孕周校验' }
       : gestationalCheck(s, due);
-    const h = hospitalNote(day);
-    rows.push({ day, a, gest, h, lead: leadNote(s, today),
+    // 这里原来还有 h = hospitalNote(day) 和 lead = leadNote(...)，
+    // 用来估算「医院能不能排上」并给综合分加减。已删除：医院排班只有医院自己知道。
+    rows.push({ day, a, gest,
                 hitClash: parents.includes(day.cz),   // 这天是否正冲夫妻一方
-                final: Math.max(0, Math.min(100, a.score + h.adj)) });
+                final: a.score });
   }
   if (!rows.length) { alert('所选窗口没有数据，请换一个日期范围'); return; }
   const usable = rows.filter(r => r.gest.ok);
