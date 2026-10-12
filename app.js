@@ -224,19 +224,30 @@ function evaluate() {
 }
 
 /* --------------------------- 解锁（付费意愿测试） --------------------------- */
+/* 价格 / 微信号 / 收款码 / 文案 全部来自 pay-config.js —— 改那个文件就够了 */
 function showUnlock() {
   const box = document.getElementById('unlockbox');
   if (box.style.display === 'block') { box.style.display = 'none'; return; }
-  box.innerHTML = `解锁后会多出这些：<br>
-    · <b>冲煞列</b> —— 这 17 天里哪天正冲你、哪天冲先生，一眼看完（老规矩里犯冲是最要紧的一条）<br>
-    · <b>每天的最佳时辰</b> —— 已排除极阴极阳的时辰，也排除医院根本排不上的时段<br>
-    · 填入你俩生肖后会<b>重算一遍排序</b>，把相冲的日子排到后面<br><br>
-    <div class="paybox">
-      <div class="pay-price">¥19.9</div>
-      <div class="pay-step">① 扫码付款（备注里写「择日」）</div>
-      <div class="pay-qr" id="payqr">［ 收款码 ］</div>
-      <div class="pay-step">② 付完加微信 <b>［ 你的微信号 ］</b>，把付款截图发我</div>
-      <div class="pay-step">③ 我把解锁链接发你，点开就是完整版</div>
+  const C = window.PAY_CONFIG || {};
+
+  const benefits = (C.benefits || []).map(b => `· ${b}`).join('<br>');
+  const qr = C.qrImage
+    ? `<img class="pay-qr" src="${C.qrImage}" alt="收款码">`
+    : `<div class="pay-qr">［ 收款码 ］</div>`;
+  const marks = '①②③④⑤⑥';
+  const steps = (C.steps || []).map((s, i) => {
+    const t = String(s)
+      .replace(/\{wechat\}/g, C.wechat || '')
+      .replace(/\{note\}/g, C.payNote || '');
+    return `<div class="pay-step">${marks[i] || (i + 1) + '.'} ${t}</div>`;
+  }).join('');
+
+  box.innerHTML =
+    (benefits ? `解锁后会多出这些：<br>${benefits}<br><br>` : '') +
+    `<div class="paybox">
+      <div class="pay-price">${C.price || ''}</div>
+      ${qr}
+      ${steps}
     </div>`;
   box.style.display = 'block';
 }
