@@ -379,6 +379,8 @@ function showUnlock() {
   // 改这里的数字，所有不带新版本号的旧链接都会显示「已失效」。
   // 注意：这只是「软失效」—— 纯静态站点没法在服务端拒绝一个 URL，
   // 只能让页面自己认出版本不对然后不给看。
+  // ⚠️ 每次改动代码后，index.html 里 app.js / pay-config.js 的 ?v= 也要一起加一，
+  //    否则访客浏览器会继续用缓存里的旧脚本（我们就是被这个坑过一次）。
   const LINK_VERSION = '3';
   if ((q.get('due') || q.get('from')) && q.get('v') !== LINK_VERSION) {
     document.body.classList.add('locked');
