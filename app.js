@@ -45,8 +45,12 @@ function rankHours(day, dayScore, parents) {
     const hz = BRANCH2ZODIAC[LIU_CHONG[h.z]];          // 这个时辰冲的生肖
     const hit = parents.includes(hz);
     const s = dayScore + h.hb - (hit ? 10 : 0);
-    return { idx: h.i, label: h.n, lucky: h.l, shizhu: h.b, relTxt: h.r || '',
-             feasible: h.f, extreme: h.x, hz, hit,
+    // lucky 用 h.lv（综合吉凶：黄道黑道 + 是否与当日相冲 + 是否极阴极阳），
+    // 不能用 h.l（cnlunar 原始判定）—— 否则会出现绿「吉」旁边写着
+    // 「与当日相冲」「传统上避开」，自相矛盾。
+    // h.lv 是后加的字段，旧数据没有时退回 h.l。
+    return { idx: h.i, label: h.n, lucky: h.lv || h.l, shizhu: h.b, relTxt: h.r || '',
+             why: h.w || '', extreme: h.x, hz, hit,
              score: Math.max(0, Math.min(100, s)) };
   });
 }
@@ -195,9 +199,8 @@ function renderPlan(letter, r, parents) {
       ${hrs.map(x => `<div class="hr"><span class="hr-l ${x.lucky === '吉' ? 'ok' : 'no'}">${x.lucky}</span>
         <b>${esc(x.label)}</b>
         <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
-        ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}
-        ${x.extreme ? `<span class="hr-r">极阴极阳，传统上避开；产科医生也普遍不排</span>` : ''}</div>`).join('')}
-      <div class="note">吉凶是按当天的值日神、建除、星宿和时辰干支的刑冲合害推的，理由都写在每一行后面。哪个时段你们方便，你们自己定。</div>
+        ${x.why ? `<span class="hr-r">${esc(x.why)}</span>` : (x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : '')}</div>`).join('')}
+      <div class="note">吉凶是三样叠加出来的：黄道黑道本身、跟当天是否相冲、以及是不是极阴极阳。理由写在每一行后面。哪个时段你们方便，你们自己定。</div>
     </div>`
     : `<div class="hourlock">🔒 <b>这一天的时辰吉凶已锁定</b> —— 解锁后会逐个列出每个时辰的吉凶和理由，你可以拿着它去跟产科对档期。</div>`}
   </div>`;
