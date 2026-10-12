@@ -255,7 +255,21 @@ function showUnlock() {
   Q = q;
   LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
   UNLOCKED = !!q.get('unlock');                             // 付费后给的链接才展开方案 B、C
-  if (UNLOCKED) document.body.classList.add('unlocked');    // 放开生肖选择 + 冲煞列 + 时辰
+  // 解锁状态记在本机，并且不等同于 URL —— 否则她复制地址栏分享出去，
+  // 别人拿到带 unlock=1 的链接就直接白嫖了完整版。
+  try {
+    if (UNLOCKED) localStorage.setItem('zeji_unlocked', '1');
+    else if (localStorage.getItem('zeji_unlocked') === '1') UNLOCKED = true;
+  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+  if (UNLOCKED) {
+    document.body.classList.add('unlocked');
+    // 擦掉地址栏里的 unlock，她复制出去的链接就是锁定版
+    if (q.get('unlock')) {
+      q.delete('unlock');
+      const rest = q.toString();
+      history.replaceState(null, '', location.pathname + (rest ? '?' + rest : ''));
+    }
+  }
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
 
   // ── 链接版本号：旧的专属链接作废用 ──────────────────────────────
