@@ -231,7 +231,13 @@ function showUnlock() {
     · <b>冲煞列</b> —— 这 17 天里哪天正冲你、哪天冲先生，一眼看完（老规矩里犯冲是最要紧的一条）<br>
     · <b>每天的最佳时辰</b> —— 已排除极阴极阳的时辰，也排除医院根本排不上的时段<br>
     · 填入你俩生肖后会<b>重算一遍排序</b>，把相冲的日子排到后面<br><br>
-    <b>¥19.9</b>　私信我、备注「择日」，我把解锁链接发你。`;
+    <div class="paybox">
+      <div class="pay-price">¥19.9</div>
+      <div class="pay-step">① 扫码付款（备注里写「择日」）</div>
+      <div class="pay-qr" id="payqr">［ 收款码 ］</div>
+      <div class="pay-step">② 付完加微信 <b>［ 你的微信号 ］</b>，把付款截图发我</div>
+      <div class="pay-step">③ 我把解锁链接发你，点开就是完整版</div>
+    </div>`;
   box.style.display = 'block';
 }
 
