@@ -107,7 +107,7 @@ function todayLocal() {
 }
 
 /* --------------------------------- 数据 ---------------------------------- */
-let DB = null, IDX = {}, Q = null;
+let DB = null, IDX = {}, Q = null, LOCKED = false, UNLOCKED = false;
 
 async function loadData() {
   const r = await fetch('data/days.json');
@@ -161,7 +161,18 @@ function render(res) {
   const { rows, ranked, parents } = res;
   const out = [];
   out.push(`<h2>窗口总览</h2>`, renderTable(rows), `<h2>推荐方案</h2>`);
-  ranked.slice(0, 3).forEach((r, i) => out.push(renderPlan('ABC'[i], r, parents)));
+
+  if (LOCKED && !UNLOCKED) {
+    // 免费版：只给第一个方案的完整内容，B、C 折叠
+    out.push(renderPlan('A', ranked[0], parents));
+    if (ranked.length > 1) {
+      out.push(`<div class="folded"><b>方案 B、C 已折叠</b>
+        <span>完整版会给出备选日期的完整分析，以及每天的推荐时辰</span></div>`);
+    }
+  } else {
+    ranked.slice(0, 3).forEach((r, i) => out.push(renderPlan('ABC'[i], r, parents)));
+  }
+
   out.push(`<div class="ask"><h3>跟产科沟通时要问的三件事</h3><ol>
     <li>这一天能不能排择期手术（部分医院要求提前 3–5 天提交手术申请单）</li>
     <li>主刀是不是你指定的那位医生</li>
@@ -209,6 +220,18 @@ function evaluate() {
   render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
 }
 
+/* --------------------------- 解锁（付费意愿测试） --------------------------- */
+function showUnlock() {
+  const box = document.getElementById('unlockbox');
+  if (box.style.display === 'block') { box.style.display = 'none'; return; }
+  box.innerHTML = `完整版会多给这些：<br>
+    · <b>每天的推荐时辰</b> —— 已经排除极阴极阳的时辰，也排除医院根本排不上的时段<br>
+    · <b>结合你们夫妻的生肖</b>，避开相冲的日子<br>
+    · 一整段针对你这份结果的说明，可以直接转给家里人看<br><br>
+    <b>¥19.9</b>　私信我、备注「择日」，我把完整版发你。`;
+  box.style.display = 'block';
+}
+
 /* -------------------------------- 初始化 --------------------------------- */
 (async function init() {
   const zs = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
@@ -221,6 +244,7 @@ function evaluate() {
   //   z= 留空表示不选任何生肖；带 auto=1 时加载完自动出结果
   const q = new URLSearchParams(location.search);
   Q = q;
+  LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
   document.getElementById('today').value = q.get('today') || todayLocal();
   document.getElementById('due').value = q.get('due') || '2026-09-30';
@@ -238,7 +262,15 @@ function evaluate() {
     document.getElementById('status').textContent = `数据已加载（${DB.length} 天）`;
     document.getElementById('go').disabled = false;
     document.getElementById('go').onclick = evaluate;
-    if (q.get('auto')) evaluate();
+
+    if (LOCKED) {
+      document.body.classList.add('locked');
+      document.querySelectorAll('input').forEach(el => (el.disabled = true));
+      document.getElementById('unlock').onclick = showUnlock;
+      evaluate();
+    } else if (q.get('auto')) {
+      evaluate();
+    }
   } catch (e) {
     document.getElementById('status').textContent = '数据加载失败：' + e.message +
       '（如果直接双击打开 html，浏览器会拦截本地文件读取，请用本地服务器打开）';
