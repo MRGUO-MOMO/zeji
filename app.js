@@ -139,6 +139,17 @@ function unlockOK(q) {
   return u === signParams(q.get('due'), q.get('from'), q.get('to'), q.get('z'));
 }
 
+/* 测试探针：?debug=1 时在页面顶部画一条色带 —— 绿=已解锁，红=未解锁。
+   给自动化验证用，肉眼看不出来也没关系。 */
+function debugBar(q, unlocked) {
+  if (!q.get('debug')) return;
+  const bar = document.createElement('div');
+  // 用静态块插在最前面，不用 position:fixed —— fixed 在整页截图里不一定落在顶部
+  bar.style.cssText = 'height:70px;margin:0;background:'
+    + (unlocked ? '#00d000' : '#e00000');
+  document.body.prepend(bar);
+}
+
 /* --------------------------------- 数据 ---------------------------------- */
 let DB = null, IDX = {}, Q = null, LOCKED = false, UNLOCKED = false;
 
@@ -315,6 +326,7 @@ function showUnlock() {
     }
   }
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
+  debugBar(q, UNLOCKED);                                    // ?debug=1 时画验证色带
 
   // ── 链接版本号：旧的专属链接作废用 ──────────────────────────────
   // 改这里的数字，所有不带新版本号的旧链接都会显示「已失效」。
