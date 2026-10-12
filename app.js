@@ -401,6 +401,17 @@ function showUnlock() {
     document.querySelectorAll('.zodiac').forEach((c, i) => (c.checked = i < 2));
   }
 
+  // 未解锁时：生肖能点，但点了引导去解锁（而不是像以前那样直接点不动）
+  document.querySelectorAll('.zchip').forEach(el => {
+    el.addEventListener('click', e => {
+      if (UNLOCKED) return;
+      e.preventDefault();
+      const ub = document.getElementById('unlockbox');
+      if (ub.style.display !== 'block') showUnlock();
+      ub.scrollIntoView({ block: 'center' });
+    }, true);
+  });
+
   try {
     await loadData();
     document.getElementById('status').textContent = `数据已加载（${DB.length} 天）`;

@@ -139,12 +139,16 @@
   body.locked #go{display:none}
   body.locked #status{display:none}
 
-  /* ── 付费解锁的内容：父母生肖 + 时辰 ── */
-  body:not(.unlocked) .zodiacs{opacity:.45;pointer-events:none}
+  /* ── 付费解锁的内容：父母生肖 + 时辰 ──
+     注意：生肖区「要能点」——之前设成 pointer-events:none 是想做付费墙，
+     结果用户以为界面坏了（真实用户反馈："无论电脑还是手机版都无法点选"），
+     而且和「填入生肖会重算」的提示自相矛盾。改成：能点，点了引导去解锁。 */
+  body:not(.unlocked) .zodiacs{opacity:.6}
   .lockhint{display:none;font-size:12.5px;line-height:1.6;color:#7a3527;background:#f6edea;
             border:1px solid #e8d5cf;border-radius:9px;padding:9px 11px;margin-top:8px}
   body:not(.unlocked) .lockhint{display:block}
-  body.unlocked .zodiacs{opacity:1;pointer-events:auto}
+  body.unlocked .zodiacs{opacity:1}
+  body.unlocked .lockhint{display:none}
   .hourlock{font-size:12.5px;color:var(--ink3);line-height:1.6;margin-top:12px;
             padding-top:12px;border-top:1px solid var(--line)}
   .hourlock b{color:var(--accent)}
@@ -225,7 +229,7 @@
     <div class="field">
       <label>父母生肖（用于避开相冲的日子）</label>
       <div class="zodiacs" id="zodiacs"></div>
-      <div class="lockhint">🔒 填入你和先生的生肖，会重算一遍——<b>把这段时间里会冲到你们的日子标出来并排到后面</b>。犯冲是这套规矩里最要紧的一条。</div>
+      <div class="lockhint">🔒 选好生肖后会<b>重算一遍</b>：把这段时间里正冲到你或先生的日子标出来、并排到后面。<br>这一项和下面的时辰建议一起解锁。</div>
     </div>
     <div class="field">
       <label>今天（用于判断预约是否来得及）</label>
@@ -255,7 +259,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="pay-config.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
