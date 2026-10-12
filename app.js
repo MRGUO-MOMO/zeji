@@ -267,8 +267,16 @@ function evaluate() {
   render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
 }
 
-/* --------------------------- 解锁（付费意愿测试） --------------------------- */
-/* 价格 / 微信号 / 收款码 / 文案 全部来自 pay-config.js —— 改那个文件就够了 */
+/* --------------------------- 解锁（自助式） ---------------------------
+ * 不加微信、不用等人回复：付款后自己把订单号后 8 位填进来就解锁。
+ *
+ * 说清楚这个机制的性质：它靠的是「荣誉制」—— 前端没有能力验证订单号真伪，
+ * 所以严格来说谁乱填一串也能过。这是有意的取舍：
+ *   加微信人工发签名链接 → 防得住白嫖，但会劝退将近一半人；
+ *   自助输入             → 零摩擦，代价是极少数人会白嫖。
+ * 对 ¥9.9 的生意，摩擦比白嫖贵。真要收紧，改回人工发签名链接即可
+ * （生成专属链接.html 那个工具一直在）。
+ * --------------------------------------------------------------------- */
 function showUnlock() {
   const box = document.getElementById('unlockbox');
   if (box.style.display === 'block') { box.style.display = 'none'; return; }
@@ -281,7 +289,7 @@ function showUnlock() {
   const marks = '①②③④⑤⑥';
   const steps = (C.steps || []).map((s, i) => {
     const t = String(s)
-      .replace(/\{wechat\}/g, C.wechat || '')
+      .replace(/\{price\}/g, C.price || '')
       .replace(/\{note\}/g, C.payNote || '');
     return `<div class="pay-step">${marks[i] || (i + 1) + '.'} ${t}</div>`;
   }).join('');
@@ -292,7 +300,32 @@ function showUnlock() {
       <div class="pay-price">${C.price || ''}</div>
       ${qr}
       ${steps}
+      <div class="payrow">
+        <input type="text" id="paycode" placeholder="订单号后 8 位" autocomplete="off">
+        <button id="paygo">解锁</button>
+      </div>
+      <div id="paymsg" class="paymsg"></div>
     </div>`;
+
+  const go = () => {
+    const v = (document.getElementById('paycode').value || '').replace(/\s/g, '');
+    const msg = document.getElementById('paymsg');
+    if (v.length < 6) {
+      msg.className = 'paymsg err';
+      msg.textContent = '订单号至少 6 位，再检查一下～';
+      return;
+    }
+    try { localStorage.setItem('zeji_unlocked', '1'); } catch (e) {}
+    UNLOCKED = true;
+    document.body.classList.add('unlocked');
+    evaluate();                       // 用解锁权限重算一遍
+    box.style.display = 'none';
+    setTimeout(() => { const r = document.getElementById('result'); if (r) window.scrollTo(0, r.offsetTop - 12); }, 60);
+  };
+  document.getElementById('paygo').onclick = go;
+  document.getElementById('paycode').addEventListener('keydown', e => {
+    if (e.key === 'Enter') go();
+  });
   box.style.display = 'block';
 }
 
