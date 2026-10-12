@@ -75,6 +75,19 @@
   .tbl td{padding:10px 6px;border-top:1px solid var(--line);vertical-align:middle}
   .tbl tr.dim{opacity:.45}
   .tbl td:last-child{font-size:12px;color:var(--ink3)}
+  /* 点开看原因：17 天每一行都能展开，不该只有方案卡里那 3 天有解释 */
+  .tbl tr.row{cursor:pointer}
+  .tbl tr.row:hover td{background:#fdfcfb}
+  .tbl tr.row td:first-child{white-space:nowrap}
+  .caret{display:inline-block;margin-left:4px;font-size:9px;color:#b8b1aa;transition:.15s}
+  .tbl tr.row.open .caret{transform:rotate(180deg);color:var(--accent)}
+  .tbl tr.row.open td{background:#fdfcfb}
+  .tbl tr.exp{display:none}
+  .tbl tr.exp.show{display:table-row}
+  .tbl tr.exp > td{padding:2px 10px 12px;border-top:0;background:#fdfcfb}
+  .tbl tr.exp .reasons{margin:0}
+  .tbl tr.exp .reasons li{font-size:12.5px;padding:3px 0 3px 19px;line-height:1.6}
+  .tbl tr.exp .note{margin:0;font-size:12.5px}
 
   .tier{display:inline-block;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:600}
   .t-首选{background:#e6f2ea;color:var(--ok)}
@@ -259,7 +272,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="pay-config.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

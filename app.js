@@ -168,19 +168,29 @@ function renderTable(rows) {
     <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"></colgroup>
     <thead><tr>
     <th>日期</th><th>星期</th><th>命理</th><th>医院</th><th>综合</th><th>孕周</th><th>冲煞</th>
-  </tr></thead><tbody>${rows.map(r => {
+  </tr></thead><tbody>${rows.map((r, i) => {
     // 冲煞这一列是收费点：免费版只显示锁定标记。
     // 冲煞本身对外可以查到，但「有没有冲到你们两个人」必须知道生肖才能算。
     const clash = UNLOCKED
       ? `冲${r.day.cz}${r.hitClash ? ' <b class="hit">冲到你</b>' : ''}`
       : '🔒';
-    return `<tr class="${r.gest.ok ? '' : 'dim'}">
-    <td>${r.day.d.slice(5)}</td><td>${r.day.wd}</td>
+    // 每一天都能点开看原因 —— 表格里 17 天，不该只有方案卡里那 3 天有解释
+    const rs = [
+      ...r.a.reasonsFor.map(x => ['ok', x]),
+      ...r.a.reasonsAgainst.map(x => ['no', x]),
+    ];
+    const detail = rs.length
+      ? `<ul class="reasons">${rs.map(([c, x]) => `<li class="${c}">${esc(x)}</li>`).join('')}</ul>`
+      : `<div class="note">这天没有特别需要说明的。</div>`;
+    return `<tr class="row" data-i="${i}">
+    <td>${r.day.d.slice(5)}<span class="caret">▾</span></td><td>${r.day.wd}</td>
     <td><span class="tier t-${r.a.tier}">${r.a.tier}</span> ${r.a.score}</td>
     <td>${r.h.tag}</td><td><b>${r.final}</b></td>
     <td title="${esc(r.gest.msg)}">${r.gest.ok ? '✓' : '⛔'}</td>
     <td>${clash}</td>
-  </tr>`; }).join('')}</tbody></table>`;
+  </tr>
+  <tr class="exp"><td colspan="7">${detail}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 
 function renderPlan(letter, r, parents) {
@@ -204,6 +214,7 @@ function renderPlan(letter, r, parents) {
         <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
         <span class="hr-l">${x.lucky}</span>
         ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}</div>`).join('')}
+      <div class="note">这天其余时段，在这套体系里判为「凶」，或者医院排不上，所以没有列出来。</div>
     </div>`
     : `<div class="hourlock">🔒 <b>最佳时辰已锁定</b> —— 解锁后会给出这一天可以安排的吉时，已经排除极阴极阳的时辰，也排除医院根本排不上的时段。</div>`}
   </div>`;
@@ -229,6 +240,20 @@ function render(res) {
   </div>`);
   const el = document.getElementById('result');
   el.innerHTML = out.join('');
+
+  // 表格行点开看原因（事件委托绑在 tbody 上，因为每次 render 都会重建表格）
+  el.querySelectorAll('.tbl tbody').forEach(tb => {
+    tb.addEventListener('click', e => {
+      const tr = e.target.closest('tr.row');
+      if (!tr || !tb.contains(tr)) return;
+      const exp = tr.nextElementSibling;
+      if (!exp || !exp.classList.contains('exp')) return;
+      const show = !exp.classList.contains('show');
+      exp.classList.toggle('show', show);
+      tr.classList.toggle('open', show);
+    });
+  });
+
   // 不要用 scrollIntoView({behavior:'smooth'})：平滑滚动依赖 requestAnimationFrame，
   // 在无头浏览器里 rAF 不触发会把 renderer 卡死（实测导致 CDP 全部超时）。用瞬时滚动。
   window.scrollTo(0, el.offsetTop - 12);
