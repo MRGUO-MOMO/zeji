@@ -106,6 +106,39 @@ function todayLocal() {
   return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
 }
 
+/* ------------------------- 解锁签名（防改参数白嫖） -------------------------
+ * unlock 参数不再是一个通用开关（unlock=1 谁带上都能解锁，那是真漏洞），
+ * 而是「按这次查询的参数算出来的签名」。
+ *   别人照原样打开 → 看到的是这一个人的日期范围（对他没用）
+ *   别人改参数     → 签名对不上 → 不解锁
+ *   别人抄签名值   → 参数不同 → 签名不匹配 → 失效
+ * 注意：SECRET 在前端可见，这是「认知差」不是密码学强度 —— 挡住的是正常人，
+ * 挡不住会读源码的人。对 ¥19.9 的生意，这个强度是匹配的。
+ * ------------------------------------------------------------------------ */
+const SIGN_SECRET = 'zeji-2026-x7k2m';
+
+function sig8(str) {
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h1 = ((h1 ^ c) * 16777619) >>> 0;
+    h2 = ((h2 + c * (i + 7) + (h2 << 5)) ) >>> 0;
+  }
+  return (h1.toString(36) + h2.toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 8);
+}
+
+// 生成器那边用同一个算法：sig8(due + '|' + from + '|' + to + '|' + z + SIGN_SECRET)
+function signParams(due, from, to, z) {
+  return sig8([due || '', from || '', to || '', z || ''].join('|') + SIGN_SECRET);
+}
+
+function unlockOK(q) {
+  const u = q.get('unlock');
+  if (!u) return false;
+  if (u === '1') return false;              // 旧的通用开关一律作废
+  return u === signParams(q.get('due'), q.get('from'), q.get('to'), q.get('z'));
+}
+
 /* --------------------------------- 数据 ---------------------------------- */
 let DB = null, IDX = {}, Q = null, LOCKED = false, UNLOCKED = false;
 
@@ -265,9 +298,9 @@ function showUnlock() {
   const q = new URLSearchParams(location.search);
   Q = q;
   LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
-  UNLOCKED = !!q.get('unlock');                             // 付费后给的链接才展开方案 B、C
+  UNLOCKED = unlockOK(q);                                   // 校验签名，不是看开关
   // 解锁状态记在本机，并且不等同于 URL —— 否则她复制地址栏分享出去，
-  // 别人拿到带 unlock=1 的链接就直接白嫖了完整版。
+  // 别人拿到带 unlock 的链接就顺着看到了完整版。
   try {
     if (UNLOCKED) localStorage.setItem('zeji_unlocked', '1');
     else if (localStorage.getItem('zeji_unlocked') === '1') UNLOCKED = true;
