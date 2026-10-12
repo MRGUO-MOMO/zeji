@@ -315,7 +315,11 @@ function showUnlock() {
       msg.textContent = '订单号至少 6 位，再检查一下～';
       return;
     }
-    try { localStorage.setItem('zeji_unlocked', '1'); } catch (e) {}
+    try { localStorage.setItem('zeji_unlocked', signParams(
+      document.getElementById('due').value,
+      document.getElementById('from').value,
+      document.getElementById('to').value,
+      [...document.querySelectorAll('.zodiac:checked')].map(x => x.value).join(','))); } catch (e) {}
     UNLOCKED = true;
     document.body.classList.add('unlocked');
     evaluate();                       // 用解锁权限重算一遍
@@ -343,11 +347,21 @@ function showUnlock() {
   Q = q;
   LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
   UNLOCKED = unlockOK(q);                                   // 校验签名，不是看开关
-  // 解锁状态记在本机，并且不等同于 URL —— 否则她复制地址栏分享出去，
-  // 别人拿到带 unlock 的链接就顺着看到了完整版。
+  // ── 解锁状态：存的是「哪一组参数解锁过」，不是一个布尔值 ──
+  // 存布尔值会出两个问题：
+  //   ① 这台机器解锁过一次，之后打开任何链接都变解锁版（连免费版也是），没法干净地测；
+  //   ② 换手机/清缓存就丢失，她会以为「付了钱怎么又锁上了」。
+  // 存签名就没这问题：同一组参数 → 解锁；换一组参数 → 免费版。
+  const curSig = q.get('unlock') || signParams(q.get('due'), q.get('from'), q.get('to'), q.get('z'));
   try {
-    if (UNLOCKED) localStorage.setItem('zeji_unlocked', '1');
-    else if (localStorage.getItem('zeji_unlocked') === '1') UNLOCKED = true;
+    if (UNLOCKED) {
+      localStorage.setItem('zeji_unlocked', curSig);        // 记下这组参数
+    } else if (q.get('free')) {
+      localStorage.removeItem('zeji_unlocked');             // ?free=1 强制免费（测试用）
+      UNLOCKED = false;
+    } else if (localStorage.getItem('zeji_unlocked') === curSig && curSig) {
+      UNLOCKED = true;                                      // 本机之前解锁过同一组参数
+    }
   } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
   if (UNLOCKED) {
     document.body.classList.add('unlocked');
