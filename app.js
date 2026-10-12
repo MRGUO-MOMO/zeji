@@ -336,7 +336,11 @@ function showUnlock() {
   }).join('');
 
   box.innerHTML =
-    (benefits ? `解锁后会多出这些：<br>${benefits}<br><br>` : '') +
+    (benefits
+      ? `解锁后会多出这些：<br>${benefits}`
+        + (C.bundleNote ? `<div class="bundlenote">${esc(C.bundleNote)}</div>` : '')
+        + '<br>'
+      : '') +
     `<div class="paybox">
       <div class="pay-price">${C.price || ''}</div>
       ${qr}
@@ -414,6 +418,7 @@ function showUnlock() {
     }
   }
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
+  if (q.get('openpay')) setTimeout(showUnlock, 0);          // ?openpay=1 直接展开付款框（截图/自测用）
   debugBar(q, UNLOCKED);                                    // ?debug=1 时画验证色带
 
   // ── 链接版本号：旧的专属链接作废用 ──────────────────────────────
