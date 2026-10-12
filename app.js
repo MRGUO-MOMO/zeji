@@ -162,8 +162,10 @@ function render(res) {
   const out = [];
   out.push(`<h2>窗口总览</h2>`, renderTable(rows), `<h2>推荐方案</h2>`);
 
-  if (LOCKED && !UNLOCKED) {
-    // 免费版：只给第一个方案的完整内容，B、C 折叠
+  if (!UNLOCKED) {
+    // 免费一律折叠：只给方案 A 完整内容，B、C 遮住
+    // （注意：不能只在 lock 模式下折叠 —— 否则任何人打开首页自己算一遍就看到全部，
+    //   付费解锁就白做了。折叠必须对所有未付费的访问生效。）
     out.push(renderPlan('A', ranked[0], parents));
     if (ranked.length > 1) {
       out.push(`<div class="folded"><b>方案 B、C 已折叠</b>
@@ -245,7 +247,22 @@ function showUnlock() {
   const q = new URLSearchParams(location.search);
   Q = q;
   LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
+  UNLOCKED = !!q.get('unlock');                             // 付费后给的链接才展开方案 B、C
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
+
+  // ── 链接版本号：旧的专属链接作废用 ──────────────────────────────
+  // 改这里的数字，所有不带新版本号的旧链接都会显示「已失效」。
+  // 注意：这只是「软失效」—— 纯静态站点没法在服务端拒绝一个 URL，
+  // 只能让页面自己认出版本不对然后不给看。
+  const LINK_VERSION = '3';
+  if ((q.get('due') || q.get('from')) && q.get('v') !== LINK_VERSION) {
+    document.body.classList.add('locked');
+    document.querySelectorAll('input').forEach(el => (el.disabled = true));
+    document.getElementById('result').innerHTML =
+      `<div class="ask"><b>这份链接已经失效了</b>
+        <p class="note">页面更新过，之前生成的链接不再有效。麻烦找发你链接的人重新要一份。</p></div>`;
+    return;
+  }
   document.getElementById('today').value = q.get('today') || todayLocal();
   document.getElementById('due').value = q.get('due') || '2026-09-30';
   document.getElementById('from').value = q.get('from') || '2026-09-21';
