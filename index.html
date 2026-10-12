@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>剖腹产择日 · 在医生给你的那几天里，哪天最合适</title>
+<style>
+  :root{
+    --bg:#faf9f7; --card:#fff; --ink:#1f1d1b; --ink2:#5c5754; --ink3:#8d8681;
+    --line:#e8e3dd; --accent:#9c3d2e; --accent-soft:#f6edea;
+    --ok:#2f7a55; --no:#b0553f; --warn:#a8761f;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:0 0 60px;
+  }
+  .wrap{max-width:660px;margin:0 auto;padding:0 18px}
+
+  header{padding:34px 0 22px;text-align:left}
+  header h1{font-size:23px;line-height:1.4;margin:0 0 8px;letter-spacing:.2px;font-weight:600}
+  header p{margin:0;color:var(--ink2);font-size:14px}
+  header .rule{width:44px;height:3px;background:var(--accent);border-radius:2px;margin:16px 0 0}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .card h2{font-size:14px;margin:0 0 14px;color:var(--ink2);font-weight:600;letter-spacing:.3px}
+
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  .field label{display:block;font-size:13px;color:var(--ink2);margin-bottom:6px}
+  .field input[type=date]{
+    width:100%;min-width:0;max-width:100%;padding:11px 12px;font-size:15px;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;background:#fdfcfb;
+    font-family:inherit;appearance:none;
+  }
+  .field input:focus{outline:none;border-color:var(--accent);background:#fff}
+  /* grid 子项默认 min-width:auto，会被 date input 的固有宽度撑破容器 —— 必须显式归零 */
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row2 > *{min-width:0;width:100%}
+
+  .zodiacs{display:flex;flex-wrap:wrap;gap:8px}
+  .zchip{position:relative;cursor:pointer}
+  .zchip input{position:absolute;opacity:0;pointer-events:none}
+  .zchip span{
+    display:inline-block;padding:6px 13px;font-size:14px;
+    border:1px solid var(--line);border-radius:999px;background:#fdfcfb;color:var(--ink2);
+    transition:.15s;
+  }
+  .zchip input:checked + span{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .btn{
+    width:100%;padding:15px;font-size:16px;font-weight:600;font-family:inherit;
+    color:#fff;background:var(--accent);border:0;border-radius:12px;cursor:pointer;
+    letter-spacing:.5px;margin-top:4px;
+  }
+  .btn:disabled{background:#c9c3bd;cursor:not-allowed}
+  .hint{font-size:12.5px;color:var(--ink3);margin-top:10px;text-align:center}
+  .hint.err{color:var(--no)}
+
+  #result h2{font-size:16px;margin:30px 0 12px;font-weight:600}
+  #result h2:first-child{margin-top:22px}
+
+  .tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+       border-radius:var(--radius);overflow:hidden;font-size:13.5px;table-layout:fixed}
+  .tbl col.c1{width:20%} .tbl col.c2{width:14%} .tbl col.c3{width:24%}
+  .tbl col.c4{width:16%} .tbl col.c5{width:12%} .tbl col.c6{width:14%}
+  .tbl td{word-break:break-word;overflow-wrap:anywhere}
+  .tbl th{background:#f5f2ef;color:var(--ink2);font-weight:600;font-size:12.5px;
+          padding:9px 6px;text-align:left;white-space:nowrap}
+  .tbl td{padding:10px 6px;border-top:1px solid var(--line);vertical-align:middle}
+  .tbl tr.dim{opacity:.45}
+  .tbl td:last-child{font-size:12px;color:var(--ink3)}
+
+  .tier{display:inline-block;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:600}
+  .t-首选{background:#e6f2ea;color:var(--ok)}
+  .t-优选{background:#eef4e8;color:#4d7a2f}
+  .t-可选{background:#f2f0ec;color:var(--ink2)}
+  .t-次选{background:#fbf1e3;color:var(--warn)}
+  .t-不建议{background:#f8e9e6;color:var(--no)}
+
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        padding:18px;margin-bottom:16px}
+  .plan-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .badge{font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);
+         padding:3px 10px;border-radius:999px;letter-spacing:.3px}
+  .plan-date{font-size:15px;font-weight:600}
+  .plan-sub{font-size:12.5px;color:var(--ink3);margin-bottom:14px}
+
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13.5px;
+      border-top:1px dashed var(--line)}
+  .kv:first-of-type{border-top:0}
+  .kv > span{color:var(--ink2);flex:none}
+  .kv > b{text-align:right;font-weight:600}
+  .kv b.t-首选,.kv b.t-优选{color:var(--ok)}
+  .kv b.t-次选{color:var(--warn)}
+  .kv b.t-不建议{color:var(--no)}
+
+  .reasons{list-style:none;padding:0;margin:10px 0 6px}
+  .reasons li{position:relative;padding:5px 0 5px 20px;font-size:13.5px;line-height:1.6}
+  .reasons li.ok:before{content:"✓";position:absolute;left:2px;color:var(--ok);font-weight:700}
+  .reasons li.no:before{content:"！";position:absolute;left:3px;color:var(--no);font-weight:700}
+  .reasons li.no{color:var(--ink2)}
+
+  .note{font-size:12.5px;color:var(--ink3);line-height:1.6;margin-top:6px}
+  .note.warn{color:var(--no)}
+
+  .hrs{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .hrs-t{font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:8px}
+  .hr{display:flex;align-items:baseline;gap:9px;padding:6px 0;font-size:13.5px;flex-wrap:wrap}
+  .hr-i{width:17px;height:17px;flex:none;border-radius:50%;background:var(--accent-soft);
+        color:var(--accent);font-size:11px;font-weight:700;text-align:center;line-height:17px}
+  .hr-b{color:var(--ink3);font-size:12.5px}
+  .hr-l{color:var(--ok);font-size:12.5px}
+  .hr-r{color:var(--ink3);font-size:12px;width:100%;padding-left:26px}
+
+  .ask{background:#f5f2ef;border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:26px}
+  .ask h3{font-size:14px;margin:0 0 10px;font-weight:600}
+  .ask ol{margin:0 0 12px;padding-left:20px;font-size:13.5px;color:var(--ink2)}
+  .ask ol li{margin-bottom:5px}
+
+  /* 出图模式：把布局钳死在固定宽度，不依赖浏览器窗口宽度。
+     命令行截图时窗口宽度和 CSS 视口宽度的换算关系不稳定，钳死它最省事。 */
+  body.shot .wrap{width:390px;max-width:390px;margin:0 auto;padding:0 18px}
+
+  footer{margin-top:34px;text-align:center;font-size:12px;color:var(--ink3);line-height:1.7}
+  @media (max-width:400px){ .row2{grid-template-columns:1fr} header h1{font-size:20px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>剖腹产择日</h1>
+    <p>不是在算「哪天是吉日」，而是帮你从医生给的那几天里，挑出最合适的一天和一个时辰。</p>
+    <div class="rule"></div>
+  </header>
+
+  <div class="card">
+    <h2>填写信息</h2>
+    <div class="field">
+      <label>预产期</label>
+      <input type="date" id="due">
+    </div>
+    <div class="field">
+      <label>医生给的日期窗口</label>
+      <div class="row2">
+        <input type="date" id="from">
+        <input type="date" id="to">
+      </div>
+    </div>
+    <div class="field">
+      <label>父母生肖（用于避开相冲的日子）</label>
+      <div class="zodiacs" id="zodiacs"></div>
+    </div>
+    <div class="field">
+      <label>今天（用于判断预约是否来得及）</label>
+      <input type="date" id="today">
+    </div>
+    <button class="btn" id="go" disabled>开始评估</button>
+    <div class="hint" id="status">正在加载数据…</div>
+  </div>
+
+  <div id="result"></div>
+
+  <footer>
+    本工具提供的是传统民俗参考，不构成医疗建议。<br>
+    最终日期与时辰请以产科医生和手术室排期为准。
+  </footer>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

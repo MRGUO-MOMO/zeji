@@ -1,0 +1,242 @@
+/* ============================================================================
+ * 择日 · 前端逻辑
+ *
+ * 单一真相源原则：
+ *   所有与用户输入无关的评分（基础分、天花板、理由文本、每个时辰的基础增量）
+ *   都在 Python 端算好写进 data/days.json。
+ *   前端只做一层「冲家长」的个性化叠加：做减法 + 封顶。
+ *
+ * 这样两端数学上不可能不一致 —— 之前两端各写一套公式，结果漂移了
+ * （Python 少算彭祖百忌两条，JS 少算「不嫁娶」）。
+ * ========================================================================== */
+
+const TIERS = [[88, '首选'], [74, '优选'], [58, '可选'], [44, '次选'], [0, '不建议']];
+const tierOf = s => (TIERS.find(([lo]) => s >= lo) || [0, '不建议'])[1];
+
+const BRANCH2ZODIAC = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龙', 巳: '蛇',
+                        午: '马', 未: '羊', 申: '猴', 酉: '鸡', 戌: '狗', 亥: '猪' };
+const LIU_CHONG = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 申: '寅',
+                    卯: '酉', 酉: '卯', 辰: '戌', 戌: '辰', 巳: '亥', 亥: '巳' };
+
+// 节假日 —— 法定日择期一般照常，但需跟产科确认
+const HOLIDAYS = new Set(['01-01', '02-16', '02-17', '02-18', '02-19', '02-20',
+  '04-04', '04-05', '04-06', '05-01', '05-02', '05-03', '06-19', '06-20', '06-21',
+  '10-01', '10-02', '10-03', '10-04', '10-05', '10-06', '10-07']);
+
+/* ---------------------------------- 日评估 --------------------------------- */
+function assessDay(day, parents) {
+  // 只叠加「冲家长」。注意比的是 day.cz（冲字后面的生肖），
+  // 不是子串匹配 —— "兔日冲鸡" 里同时含兔和鸡，子串匹配会罚错人。
+  const cc = parents.filter(p => p === day.cz).length;
+  const base = day.base - 12 * cc;
+  const score = Math.max(0, Math.trunc(Math.min(day.ceil, base)));
+
+  const reasonsFor = [...(day.rf || [])];
+  const reasonsAgainst = [...(day.ra || [])];
+  if (cc) reasonsAgainst.push(`这天「${day.clash}」——正冲属${day.cz}的家长`);
+
+  return { score, tier: tierOf(score), reasonsFor, reasonsAgainst };
+}
+
+/* ---------------------------------- 时辰 ---------------------------------- */
+function rankHours(day, dayScore, parents) {
+  return (day.sz || []).map(h => {
+    const hz = BRANCH2ZODIAC[LIU_CHONG[h.z]];          // 这个时辰冲的生肖
+    const hit = parents.includes(hz);
+    const s = dayScore + h.hb - (hit ? 10 : 0);
+    return { idx: h.i, label: h.n, lucky: h.l, shizhu: h.b, relTxt: h.r || '',
+             feasible: h.f, extreme: h.x, hz, hit,
+             score: Math.max(0, Math.min(100, s)) };
+  });
+}
+
+function pickHours(day, dayScore, parents, want = 3) {
+  return rankHours(day, dayScore, parents)
+    .filter(x => x.feasible && ![0, 6, 12].includes(x.idx) && x.lucky === '吉')
+    .sort((a, b) => (a.idx !== 5) - (b.idx !== 5) || b.score - a.score)
+    .slice(0, want);
+}
+
+/* -------------------------------- 现实约束 -------------------------------- */
+function hospitalNote(day) {
+  const d = new Date(day.d + 'T00:00:00');
+  const wd = d.getDay();                              // 0 = 周日
+  if (HOLIDAYS.has(day.d.slice(5)))
+    return { tag: '需确认', adj: -3,
+      msg: '法定节假日。产科 24 小时值班、照常接生，节假日也能手术；要问的是「能不能安排择期」和「主刀是不是你指定的那位」' };
+  if (wd === 0)
+    return { tag: '需确认', adj: -3,
+      msg: '周日。产科节假日照常值班，通常可以安排；提前确认主刀医生是否为你指定的那位' };
+  if (wd === 6)
+    return { tag: '可安排', adj: -2, msg: '周六。多数医院可安排，提前跟产科约手术室档期' };
+  if (wd === 1)
+    return { tag: '较忙', adj: -4, msg: '周一上午是全周手术高峰，手术室偏紧；不介意排到下午或换一天的话可以问一下' };
+  return { tag: '正常', adj: 0, msg: '工作日，正常排期' };
+}
+
+function gestationalCheck(dateStr, dueStr) {
+  const t = new Date(dateStr + 'T00:00:00'), due = new Date(dueStr + 'T00:00:00');
+  const daysBefore = Math.round((due - t) / 86400000);
+  const week = 40 - daysBefore / 7;
+  if (daysBefore > 21) return { ok: false, msg: `比预产期早 ${daysBefore} 天（约孕 ${week.toFixed(1)} 周），离得太远，属于早产` };
+  if (week < 38) return { ok: false, msg: `约孕 ${week.toFixed(1)} 周，早于 38 周，肺成熟度不够，医学上不建议择期` };
+  if (daysBefore < 0) return { ok: false, msg: `已超过预产期 ${-daysBefore} 天` };
+  return { ok: true, msg: `约孕 ${week.toFixed(1)} 周（比预产期早 ${daysBefore} 天），在可择期范围内` };
+}
+
+function leadNote(dateStr, todayStr) {
+  if (!todayStr) return '';
+  const gap = Math.round((new Date(dateStr + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+  if (gap < 0) return '日期已过';
+  if (gap < 10) return `距今天仅 ${gap} 天 —— 时间偏紧，今天就该联系产科确认手术室`;
+  return `距今天 ${gap} 天，来得及走正常预约流程`;
+}
+
+function addDay(s, n) {
+  // 不要用 toISOString()：它按 UTC 输出，在 UTC+8 会让日期倒退一天，
+  // 导致调用方（for 循环）永远拿回同一个日期 → 死循环卡死页面。
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  const p = x => String(x).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
+
+function todayLocal() {
+  const n = new Date(), p = x => String(x).padStart(2, '0');
+  return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
+}
+
+/* --------------------------------- 数据 ---------------------------------- */
+let DB = null, IDX = {};
+
+async function loadData() {
+  const r = await fetch('data/days.json');
+  DB = (await r.json()).days;
+  DB.forEach(d => (IDX[d.d] = d));
+  return DB;
+}
+
+/* --------------------------------- 渲染 ---------------------------------- */
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function renderTable(rows) {
+  return `<table class="tbl">
+    <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"></colgroup>
+    <thead><tr>
+    <th>日期</th><th>星期</th><th>命理</th><th>医院</th><th>综合</th><th>孕周</th>
+  </tr></thead><tbody>${rows.map(r => `<tr class="${r.gest.ok ? '' : 'dim'}">
+    <td>${r.day.d.slice(5)}</td><td>${r.day.wd}</td>
+    <td><span class="tier t-${r.a.tier}">${r.a.tier}</span> ${r.a.score}</td>
+    <td>${r.h.tag}</td><td><b>${r.final}</b></td>
+    <td title="${esc(r.gest.msg)}">${r.gest.ok ? '✓' : '⛔'}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function renderPlan(letter, r, parents) {
+  const a = r.a, day = r.day;
+  const hrs = pickHours(day, a.score, parents);
+  return `<div class="plan">
+    <div class="plan-h"><span class="badge">方案 ${letter}${letter === 'A' ? ' · 首选' : ''}</span>
+      <span class="plan-date">${day.d}（${day.wd}）</span></div>
+    <div class="plan-sub">${esc(day.ly)}${esc(day.l)}　${esc(day.g)}</div>
+    <div class="kv"><span>命理</span><b class="t-${a.tier}">${a.tier} · ${a.score} 分</b></div>
+    <ul class="reasons">${a.reasonsFor.slice(0, 3).map(x => `<li class="ok">${esc(x)}</li>`).join('')}
+      ${a.reasonsAgainst.slice(0, 3).map(x => `<li class="no">${esc(x)}</li>`).join('')}</ul>
+    <div class="kv"><span>二十八宿</span><b>${esc(day.star)}</b></div>
+    <div class="kv"><span>孕周</span><b>${r.gest.ok ? '✅' : '⛔'} ${esc(r.gest.msg)}</b></div>
+    <div class="kv"><span>医院</span><b>${r.h.tag}</b></div>
+    <div class="note">${esc(r.h.msg)}</div>
+    ${r.lead ? `<div class="note">排期：${esc(r.lead)}</div>` : ''}
+    ${hrs.length ? `<div class="hrs"><div class="hrs-t">推荐时辰（只列「吉」且医院排得上的）</div>
+      ${hrs.map((x, i) => `<div class="hr"><span class="hr-i">${i + 1}</span>
+        <b>${x.idx === 5 ? '★' : ''}${esc(x.label)}</b>
+        <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
+        <span class="hr-l">${x.lucky}</span>
+        ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}</div>`).join('')}
+    </div>` : `<div class="note warn">这天医院能排上的时段里没有吉时 —— 建议换个日期</div>`}
+  </div>`;
+}
+
+function render(res) {
+  const { rows, ranked, parents } = res;
+  const out = [];
+  out.push(`<h2>窗口总览</h2>`, renderTable(rows), `<h2>推荐方案</h2>`);
+  ranked.slice(0, 3).forEach((r, i) => out.push(renderPlan('ABC'[i], r, parents)));
+  out.push(`<div class="ask"><h3>跟产科沟通时要问的三件事</h3><ol>
+    <li>这一天能不能排择期手术（部分医院要求提前 3–5 天提交手术申请单）</li>
+    <li>主刀是不是你指定的那位医生</li>
+    <li>如果当天有急诊插台，我的手术会不会被推后 —— 手术台永远急诊优先</li></ol>
+    <p class="note">节假日与周末不排除在推荐之外：产科 24 小时值班、照常接生，公立三甲周末手术资源通常较充足，基层或私立医院可能优先保障急诊、择期顺延到工作日 —— 这只能问你的医院。</p>
+    <p class="note">时辰已避开子时与午时（极阴极阳），以及下班后的时段（值班力量弱，只做急诊）。</p>
+    <p class="note">最终日期与时辰请以产科医生和手术室排期为准，本结果仅作传统民俗参考。</p>
+  </div>`);
+  const el = document.getElementById('result');
+  el.innerHTML = out.join('');
+  // 不要用 scrollIntoView({behavior:'smooth'})：平滑滚动依赖 requestAnimationFrame，
+  // 在无头浏览器里 rAF 不触发会把 renderer 卡死（实测导致 CDP 全部超时）。用瞬时滚动。
+  window.scrollTo(0, el.offsetTop - 12);
+}
+
+function evaluate() {
+  const due = document.getElementById('due').value;
+  const from = document.getElementById('from').value;
+  const to = document.getElementById('to').value;
+  const today = document.getElementById('today').value || null;
+  const parents = [...document.querySelectorAll('.zodiac:checked')].map(x => x.value);
+  if (!due || !from || !to) { alert('请填完预产期和窗口起止日期'); return; }
+  if (from > to) { alert('窗口起始日期不能晚于结束日期'); return; }
+
+  const rows = [];
+  for (let s = from; s <= to; s = addDay(s, 1)) {
+    const day = IDX[s];
+    if (!day) continue;
+    const a = assessDay(day, parents);
+    const gest = gestationalCheck(s, due);
+    const h = hospitalNote(day);
+    rows.push({ day, a, gest, h, lead: leadNote(s, today),
+                final: Math.max(0, Math.min(100, a.score + h.adj)) });
+  }
+  if (!rows.length) { alert('所选窗口没有数据，请换一个日期范围'); return; }
+  const usable = rows.filter(r => r.gest.ok);
+  if (!usable.length) {
+    document.getElementById('result').innerHTML =
+      `<div class="ask"><b>⚠ 窗口内没有日期通过孕周检查</b>，请与产科重新确认可择期范围。</div>`;
+    return;
+  }
+  render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
+}
+
+/* -------------------------------- 初始化 --------------------------------- */
+(async function init() {
+  const zs = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+  document.getElementById('zodiacs').innerHTML = zs.map(z =>
+    `<label class="zchip"><input type="checkbox" class="zodiac" value="${z}"><span>${z}</span></label>`
+  ).join('');
+
+  // 支持 URL 参数：可分享结果链接，也可用于批量出图。
+  //   ?due=2026-09-30&from=2026-09-21&to=2026-09-27&today=2026-09-14&z=马,兔&auto=1
+  //   z= 留空表示不选任何生肖；带 auto=1 时加载完自动出结果
+  const q = new URLSearchParams(location.search);
+  if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
+  document.getElementById('today').value = q.get('today') || todayLocal();
+  document.getElementById('due').value = q.get('due') || '2026-09-30';
+  document.getElementById('from').value = q.get('from') || '2026-09-21';
+  document.getElementById('to').value = q.get('to') || '2026-09-27';
+  if (q.has('z')) {
+    const vals = q.get('z') ? q.get('z').split(',') : [];
+    document.querySelectorAll('.zodiac').forEach(c => (c.checked = vals.includes(c.value)));
+  } else {
+    document.querySelectorAll('.zodiac').forEach((c, i) => (c.checked = i < 2));
+  }
+
+  try {
+    await loadData();
+    document.getElementById('status').textContent = `数据已加载（${DB.length} 天）`;
+    document.getElementById('go').disabled = false;
+    document.getElementById('go').onclick = evaluate;
+    if (q.get('auto')) evaluate();
+  } catch (e) {
+    document.getElementById('status').textContent = '数据加载失败：' + e.message +
+      '（如果直接双击打开 html，浏览器会拦截本地文件读取，请用本地服务器打开）';
+  }
+})();
