@@ -252,6 +252,15 @@ function render(res) {
       exp.classList.toggle('show', show);
       tr.classList.toggle('open', show);
     });
+    // 默认把第一行展开 —— 全部折叠的话，用户根本不知道这些行能点
+    const first = tb.querySelector('tr.row');
+    if (first) {
+      const exp = first.nextElementSibling;
+      if (exp && exp.classList.contains('exp')) {
+        exp.classList.add('show');
+        first.classList.add('open');
+      }
+    }
   });
 
   // 不要用 scrollIntoView({behavior:'smooth'})：平滑滚动依赖 requestAnimationFrame，
