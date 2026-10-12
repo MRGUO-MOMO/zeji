@@ -66,8 +66,13 @@
 
   .tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
        border-radius:var(--radius);overflow:hidden;font-size:13.5px;table-layout:fixed}
-  .tbl col.c1{width:17%} .tbl col.c2{width:12%} .tbl col.c3{width:21%}
-  .tbl col.c4{width:14%} .tbl col.c5{width:11%} .tbl col.c6{width:10%} .tbl col.c7{width:15%}
+  .tbl col.c1{width:16%} .tbl col.c2{width:12%} .tbl col.c3{width:24%}
+  .tbl col.c4{width:16%} .tbl col.c5{width:9%} .tbl col.c6{width:9%} .tbl col.c7{width:14%}
+  /* 前四列内容比别的长，一律不许换行，否则「不建议 40」「周日」会断成两行。
+     必须限定 tr.row —— 展开行是「一个 colspan=7 的 td」，它同样是 nth-child(1)，
+     会被这个选择器误伤，导致展开的长文字被 nowrap 裁掉。 */
+  .tbl tr.row td:nth-child(-n+4){white-space:nowrap;font-size:12.5px}
+  .tbl tr.exp > td{white-space:normal}
   .tbl td{word-break:break-word;overflow-wrap:anywhere}
   .tbl b.hit{color:#b0553f;font-weight:600;white-space:nowrap}
   .tbl th{background:#f5f2ef;color:var(--ink2);font-weight:600;font-size:12.5px;
@@ -272,7 +277,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="pay-config.js?v=8"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

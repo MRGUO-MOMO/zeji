@@ -298,7 +298,14 @@ function evaluate() {
       `<div class="ask"><b>⚠ 窗口内没有日期通过孕周检查</b>，请与产科重新确认可择期范围。</div>`;
     return;
   }
-  render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
+  try {
+    render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
+  } catch (err) {
+    // 渲染中途出错时把原因显示出来，而不是留一个半截页面
+    document.getElementById('result').innerHTML =
+      `<div class="ask"><b>渲染出错</b><p class="note">${esc(String((err && err.message) || err))}</p>
+       <p class="note">${esc(String((err && err.stack) || '').split('\n').slice(0, 4).join(' | '))}</p></div>`;
+  }
 }
 
 /* --------------------------- 解锁（自助式） ---------------------------
@@ -432,7 +439,11 @@ function showUnlock() {
     const vals = q.get('z') ? q.get('z').split(',') : [];
     document.querySelectorAll('.zodiac').forEach(c => (c.checked = vals.includes(c.value)));
   } else {
-    document.querySelectorAll('.zodiac').forEach((c, i) => (c.checked = i < 2));
+    // 默认「一个都不勾」。
+    // 以前默认勾前两个（鼠、牛），结果免费版的人在没选任何生肖的情况下，
+    // 排名已经按鼠、牛扣过冲煞分了 —— 和他自己心里的预期对不上，会被当成算错。
+    // 免费版本来就看不到冲煞，那就不该按生肖扣分。
+    document.querySelectorAll('.zodiac').forEach(c => (c.checked = false));
   }
 
   // 未解锁时：生肖能点，但点了引导去解锁（而不是像以前那样直接点不动）
