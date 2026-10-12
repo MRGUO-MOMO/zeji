@@ -179,6 +179,9 @@
   .pay-qr{width:150px;height:150px;margin:8px auto;border:1px dashed #c9c3bd;border-radius:8px;
           display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink3);
           background:#fff}
+  /* 真实收款码是一张竖版海报，不能塞进正方形里 —— 自适应宽度 */
+  img.pay-qr{width:100%;max-width:230px;height:auto;display:block;margin:10px auto;
+             border:0;border-radius:10px}
 
   footer{margin-top:34px;text-align:center;font-size:12px;color:var(--ink3);line-height:1.7}
   @media (max-width:400px){ .row2{grid-template-columns:1fr} header h1{font-size:20px} }
