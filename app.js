@@ -107,7 +107,7 @@ function todayLocal() {
 }
 
 /* --------------------------------- 数据 ---------------------------------- */
-let DB = null, IDX = {};
+let DB = null, IDX = {}, Q = null;
 
 async function loadData() {
   const r = await fetch('data/days.json');
@@ -191,7 +191,10 @@ function evaluate() {
     const day = IDX[s];
     if (!day) continue;
     const a = assessDay(day, parents);
-    const gest = gestationalCheck(s, due);
+    // nodue=1：窗口是医生给的，说明医学上已经确认，不要再被孕周校验二次过滤
+    const gest = (Q && Q.get('nodue'))
+      ? { ok: true, msg: '按医生给的窗口计算，未做孕周校验' }
+      : gestationalCheck(s, due);
     const h = hospitalNote(day);
     rows.push({ day, a, gest, h, lead: leadNote(s, today),
                 final: Math.max(0, Math.min(100, a.score + h.adj)) });
@@ -217,6 +220,7 @@ function evaluate() {
   //   ?due=2026-09-30&from=2026-09-21&to=2026-09-27&today=2026-09-14&z=马,兔&auto=1
   //   z= 留空表示不选任何生肖；带 auto=1 时加载完自动出结果
   const q = new URLSearchParams(location.search);
+  Q = q;
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
   document.getElementById('today').value = q.get('today') || todayLocal();
   document.getElementById('due').value = q.get('due') || '2026-09-30';
