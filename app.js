@@ -121,15 +121,22 @@ const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', 
 
 function renderTable(rows) {
   return `<table class="tbl">
-    <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"></colgroup>
+    <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"></colgroup>
     <thead><tr>
-    <th>日期</th><th>星期</th><th>命理</th><th>医院</th><th>综合</th><th>孕周</th>
-  </tr></thead><tbody>${rows.map(r => `<tr class="${r.gest.ok ? '' : 'dim'}">
+    <th>日期</th><th>星期</th><th>命理</th><th>医院</th><th>综合</th><th>孕周</th><th>冲煞</th>
+  </tr></thead><tbody>${rows.map(r => {
+    // 冲煞这一列是收费点：免费版只显示锁定标记。
+    // 冲煞本身对外可以查到，但「有没有冲到你们两个人」必须知道生肖才能算。
+    const clash = UNLOCKED
+      ? `冲${r.day.cz}${r.hitClash ? ' <b class="hit">冲到你</b>' : ''}`
+      : '🔒';
+    return `<tr class="${r.gest.ok ? '' : 'dim'}">
     <td>${r.day.d.slice(5)}</td><td>${r.day.wd}</td>
     <td><span class="tier t-${r.a.tier}">${r.a.tier}</span> ${r.a.score}</td>
     <td>${r.h.tag}</td><td><b>${r.final}</b></td>
     <td title="${esc(r.gest.msg)}">${r.gest.ok ? '✓' : '⛔'}</td>
-  </tr>`).join('')}</tbody></table>`;
+    <td>${clash}</td>
+  </tr>`; }).join('')}</tbody></table>`;
 }
 
 function renderPlan(letter, r, parents) {
@@ -147,13 +154,14 @@ function renderPlan(letter, r, parents) {
     <div class="kv"><span>医院</span><b>${r.h.tag}</b></div>
     <div class="note">${esc(r.h.msg)}</div>
     ${r.lead ? `<div class="note">排期：${esc(r.lead)}</div>` : ''}
-    ${hrs.length ? `<div class="hrs"><div class="hrs-t">推荐时辰（只列「吉」且医院排得上的）</div>
+    ${hrs.length && UNLOCKED ? `<div class="hrs"><div class="hrs-t">推荐时辰（只列「吉」且医院排得上的）</div>
       ${hrs.map((x, i) => `<div class="hr"><span class="hr-i">${i + 1}</span>
         <b>${x.idx === 5 ? '★' : ''}${esc(x.label)}</b>
         <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
         <span class="hr-l">${x.lucky}</span>
         ${x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : ''}</div>`).join('')}
-    </div>` : `<div class="note warn">这天医院能排上的时段里没有吉时 —— 建议换个日期</div>`}
+    </div>`
+    : `<div class="hourlock">🔒 <b>最佳时辰已锁定</b> —— 解锁后会给出这一天可以安排的吉时，已经排除极阴极阳的时辰，也排除医院根本排不上的时段。</div>`}
   </div>`;
 }
 
@@ -162,18 +170,10 @@ function render(res) {
   const out = [];
   out.push(`<h2>窗口总览</h2>`, renderTable(rows), `<h2>推荐方案</h2>`);
 
-  if (!UNLOCKED) {
-    // 免费一律折叠：只给方案 A 完整内容，B、C 遮住
-    // （注意：不能只在 lock 模式下折叠 —— 否则任何人打开首页自己算一遍就看到全部，
-    //   付费解锁就白做了。折叠必须对所有未付费的访问生效。）
-    out.push(renderPlan('A', ranked[0], parents));
-    if (ranked.length > 1) {
-      out.push(`<div class="folded"><b>方案 B、C 已折叠</b>
-        <span>完整版会给出备选日期的完整分析，以及每天的推荐时辰</span></div>`);
-    }
-  } else {
-    ranked.slice(0, 3).forEach((r, i) => out.push(renderPlan('ABC'[i], r, parents)));
-  }
+  // 方案 A、B、C 全部免费给 —— 表格里已经有每天的分数和档位，
+  // 折叠 B、C 等于收钱卖她「已经能推断出来的东西」，那不值钱。
+  // 真正该收费的是「冲煞」和「时辰」：这两样从免费信息里推不出来。
+  ranked.slice(0, 3).forEach((r, i) => out.push(renderPlan('ABC'[i], r, parents)));
 
   out.push(`<div class="ask"><h3>跟产科沟通时要问的三件事</h3><ol>
     <li>这一天能不能排择期手术（部分医院要求提前 3–5 天提交手术申请单）</li>
@@ -210,6 +210,7 @@ function evaluate() {
       : gestationalCheck(s, due);
     const h = hospitalNote(day);
     rows.push({ day, a, gest, h, lead: leadNote(s, today),
+                hitClash: parents.includes(day.cz),   // 这天是否正冲夫妻一方
                 final: Math.max(0, Math.min(100, a.score + h.adj)) });
   }
   if (!rows.length) { alert('所选窗口没有数据，请换一个日期范围'); return; }
@@ -226,11 +227,11 @@ function evaluate() {
 function showUnlock() {
   const box = document.getElementById('unlockbox');
   if (box.style.display === 'block') { box.style.display = 'none'; return; }
-  box.innerHTML = `完整版会多给这些：<br>
-    · <b>每天的推荐时辰</b> —— 已经排除极阴极阳的时辰，也排除医院根本排不上的时段<br>
-    · <b>结合你们夫妻的生肖</b>，避开相冲的日子<br>
-    · 一整段针对你这份结果的说明，可以直接转给家里人看<br><br>
-    <b>¥19.9</b>　私信我、备注「择日」，我把完整版发你。`;
+  box.innerHTML = `解锁后会多出这些：<br>
+    · <b>冲煞列</b> —— 这 17 天里哪天正冲你、哪天冲先生，一眼看完（老规矩里犯冲是最要紧的一条）<br>
+    · <b>每天的最佳时辰</b> —— 已排除极阴极阳的时辰，也排除医院根本排不上的时段<br>
+    · 填入你俩生肖后会<b>重算一遍排序</b>，把相冲的日子排到后面<br><br>
+    <b>¥19.9</b>　私信我、备注「择日」，我把解锁链接发你。`;
   box.style.display = 'block';
 }
 
@@ -248,6 +249,7 @@ function showUnlock() {
   Q = q;
   LOCKED = !!q.get('lock');                                 // 锁定模式：信息固定，不给改
   UNLOCKED = !!q.get('unlock');                             // 付费后给的链接才展开方案 B、C
+  if (UNLOCKED) document.body.classList.add('unlocked');    // 放开生肖选择 + 冲煞列 + 时辰
   if (q.get('shot')) document.body.classList.add('shot');   // 出图模式：固定宽度
 
   // ── 链接版本号：旧的专属链接作废用 ──────────────────────────────

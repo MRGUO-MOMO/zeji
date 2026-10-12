@@ -66,9 +66,10 @@
 
   .tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
        border-radius:var(--radius);overflow:hidden;font-size:13.5px;table-layout:fixed}
-  .tbl col.c1{width:20%} .tbl col.c2{width:14%} .tbl col.c3{width:24%}
-  .tbl col.c4{width:16%} .tbl col.c5{width:12%} .tbl col.c6{width:14%}
+  .tbl col.c1{width:17%} .tbl col.c2{width:12%} .tbl col.c3{width:21%}
+  .tbl col.c4{width:14%} .tbl col.c5{width:11%} .tbl col.c6{width:10%} .tbl col.c7{width:15%}
   .tbl td{word-break:break-word;overflow-wrap:anywhere}
+  .tbl b.hit{color:#b0553f;font-weight:600;white-space:nowrap}
   .tbl th{background:#f5f2ef;color:var(--ink2);font-weight:600;font-size:12.5px;
           padding:9px 6px;text-align:left;white-space:nowrap}
   .tbl td{padding:10px 6px;border-top:1px solid var(--line);vertical-align:middle}
@@ -138,6 +139,16 @@
   body.locked #go{display:none}
   body.locked #status{display:none}
 
+  /* ── 付费解锁的内容：父母生肖 + 时辰 ── */
+  body:not(.unlocked) .zodiacs{opacity:.45;pointer-events:none}
+  .lockhint{display:none;font-size:12.5px;line-height:1.6;color:#7a3527;background:#f6edea;
+            border:1px solid #e8d5cf;border-radius:9px;padding:9px 11px;margin-top:8px}
+  body:not(.unlocked) .lockhint{display:block}
+  body.unlocked .zodiacs{opacity:1;pointer-events:auto}
+  .hourlock{font-size:12.5px;color:var(--ink3);line-height:1.6;margin-top:12px;
+            padding-top:12px;border-top:1px solid var(--line)}
+  .hourlock b{color:var(--accent)}
+
   /* 折叠的方案（免费版只给第一个完整的） */
   .folded{background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);
           padding:16px;margin-bottom:16px;text-align:center}
@@ -189,6 +200,7 @@
     <div class="field">
       <label>父母生肖（用于避开相冲的日子）</label>
       <div class="zodiacs" id="zodiacs"></div>
+      <div class="lockhint">🔒 填入你和先生的生肖，会重算一遍——<b>把这段时间里会冲到你们的日子标出来并排到后面</b>。犯冲是这套规矩里最要紧的一条。</div>
     </div>
     <div class="field">
       <label>今天（用于判断预约是否来得及）</label>
@@ -201,10 +213,10 @@
   <div id="result"></div>
 
   <div class="cta">
-    <p class="lead">想让结果更贴合你们两个？</p>
-    <button class="btn-ghost solid" id="unlock">解锁完整版 · 含最佳时辰 + 夫妻生肖合参</button>
+    <p class="lead">上面的日期排序是通用的。<br>真正跟你有关的，是下面这两件。</p>
+    <button class="btn-ghost solid" id="unlock">解锁 · 避开相冲的日子 + 每天的最佳时辰</button>
     <div class="unlockbox" id="unlockbox"></div>
-    <p class="tip">上面这份是按你的日期算的。完整版会加上每天的最佳时辰，并结合你们夫妻的生肖、避开相冲的日子。</p>
+    <p class="tip">这几天里可能就有正冲你或先生的，但不知道你俩的生肖就算不出来。</p>
   </div>
 
   <div class="cta" id="ctaShare" style="text-align:center">
