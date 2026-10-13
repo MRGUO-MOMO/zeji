@@ -275,10 +275,13 @@ function evaluate() {
     const day = IDX[s];
     if (!day) continue;
     const a = assessDay(day, parents);
-    // nodue=1：窗口是医生给的，说明医学上已经确认，不要再被孕周校验二次过滤
+    // nodue=1 的含义是「医生已经确认过这个窗口，别因为孕周不合格就把日期剔掉」，
+    // 不是「不显示孕周」。孕周是她最想看到的客观信息之一，任何时候都要算出来给她看。
+    // （原来这里直接换成一句「未做孕周校验」，等于把信息藏了 —— 用户当场问「最新版没有孕周了？」）
+    const g = gestationalCheck(s, due);
     const gest = (Q && Q.get('nodue'))
-      ? { ok: true, msg: '按医生给的窗口计算，未做孕周校验' }
-      : gestationalCheck(s, due);
+      ? { ok: true, msg: g.ok ? g.msg : `${g.msg}（医生给的窗口，仍列入）` }
+      : g;
     // 这里原来还有 h = hospitalNote(day) 和 lead = leadNote(...)，
     // 用来估算「医院能不能排上」并给综合分加减。已删除：医院排班只有医院自己知道。
     rows.push({ day, a, gest,
