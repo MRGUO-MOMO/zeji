@@ -275,13 +275,12 @@ function evaluate() {
     const day = IDX[s];
     if (!day) continue;
     const a = assessDay(day, parents);
-    // nodue=1 的含义是「医生已经确认过这个窗口，别因为孕周不合格就把日期剔掉」，
-    // 不是「不显示孕周」。孕周是她最想看到的客观信息之一，任何时候都要算出来给她看。
-    // （原来这里直接换成一句「未做孕周校验」，等于把信息藏了 —— 用户当场问「最新版没有孕周了？」）
-    const g = gestationalCheck(s, due);
-    const gest = (Q && Q.get('nodue'))
-      ? { ok: true, msg: g.ok ? g.msg : `${g.msg}（医生给的窗口，仍列入）` }
-      : g;
+    // 孕周永远算、永远显示，不因任何参数隐藏，也永远不剔除日期。
+    //   · 不隐藏：孕周是她最想看的客观信息之一（曾因一条「跳过校验」参数把它替换成
+    //     「未做孕周校验」，用户当场问「最新版没有孕周了？」）
+    //   · 不剔除：医生的窗口本身就是医学确认；不合格的日子照样列出来并标注，
+    //     而不是悄悄删掉 —— 和「不猜医院排期」是同一条原则：给信息，让她自己判断。
+    const gest = gestationalCheck(s, due);
     // 这里原来还有 h = hospitalNote(day) 和 lead = leadNote(...)，
     // 用来估算「医院能不能排上」并给综合分加减。已删除：医院排班只有医院自己知道。
     rows.push({ day, a, gest,
@@ -289,12 +288,7 @@ function evaluate() {
                 final: a.score });
   }
   if (!rows.length) { alert('所选窗口没有数据，请换一个日期范围'); return; }
-  const usable = rows.filter(r => r.gest.ok);
-  if (!usable.length) {
-    document.getElementById('result').innerHTML =
-      `<div class="ask"><b>⚠ 窗口内没有日期通过孕周检查</b>，请与产科重新确认可择期范围。</div>`;
-    return;
-  }
+  const usable = rows;                                 // 不按孕周过滤
   try {
     render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
   } catch (err) {
