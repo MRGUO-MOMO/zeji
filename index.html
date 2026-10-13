@@ -207,17 +207,6 @@
   /* 真实收款码是一张竖版海报，不能塞进正方形里 —— 自适应宽度 */
   img.pay-qr{width:100%;max-width:230px;height:auto;display:block;margin:10px auto;
              border:0;border-radius:10px}
-  /* 自助解锁的输入行 */
-  .payrow{display:flex;gap:8px;margin-top:12px}
-  .payrow input{flex:1;min-width:0;padding:11px 12px;font-size:15px;font-family:inherit;
-                border:1px solid var(--line);border-radius:10px;background:#fff;text-align:center;
-                letter-spacing:1px}
-  .payrow input:focus{outline:none;border-color:var(--accent)}
-  .payrow button{flex:none;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;
-                 color:#fff;background:var(--accent);border:0;border-radius:10px;cursor:pointer}
-  .paymsg{font-size:12.5px;margin-top:8px;min-height:16px;text-align:center}
-  .paymsg.err{color:var(--no)}
-  .paymsg.ok{color:var(--ok)}
 
   footer{margin-top:34px;text-align:center;font-size:12px;color:var(--ink3);line-height:1.7}
   @media (max-width:400px){ .row2{grid-template-columns:1fr} header h1{font-size:20px} }
@@ -280,7 +269,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="pay-config.js?v=14"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
