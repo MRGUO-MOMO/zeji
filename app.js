@@ -140,6 +140,14 @@ function debugBar(q, unlocked) {
 /* --------------------------------- 数据 ---------------------------------- */
 let DB = null, IDX = {}, Q = null, LOCKED = false, UNLOCKED = false;
 
+/* 百度统计埋点。只用事件，不碰个人信息。
+   没加载成功时（比如被广告拦截插件拦了）静默跳过，绝不能影响主流程。 */
+function track(cat, act, label) {
+  try {
+    (window._hmt = window._hmt || []).push(['_trackEvent', cat, act, String(label == null ? '' : label)]);
+  } catch (e) { /* 统计坏了不影响用 */ }
+}
+
 async function loadData() {
   const r = await fetch('data/days.json');
   DB = (await r.json()).days;
@@ -232,15 +240,19 @@ function render(res) {
   // 原先只有一个入口，在整页最底部。用户滑到方案 A（已经拿到答案）就走了，
   // 根本到不了那里 —— 真实反馈："解锁入口在页面最底部"。
   // 现在表格的 🔒、时辰区的锁定提示、生肖区的提示，点任何一个都弹付款框。
-  const openPay = () => {
+  const openPay = (where) => {
+    track('unlock', 'click', where);                 // 谁点了、点的哪儿
     const box = document.getElementById('unlockbox');
-    if (box.style.display !== 'block') showUnlock();
+    const first = box.style.display !== 'block';
+    if (first) showUnlock();
+    if (first) track('unlock', 'paybox_open', where); // 付款框真的展开了
     // 瞬时滚动。不要用 behavior:'smooth' —— 它依赖 requestAnimationFrame，
     // 无头环境不产生帧会把 renderer 卡死（实测导致后续所有 CDP 调用超时）。
     box.scrollIntoView({ block: 'center' });
   };
   el.querySelectorAll('.lockcell, .hourlock.clickable').forEach(x => {
-    x.addEventListener('click', openPay);
+    const where = x.classList.contains('lockcell') ? '表格冲煞列' : '时辰区';
+    x.addEventListener('click', () => openPay(where));
   });
 
   // 表格行点开看原因（事件委托绑在 tbody 上，因为每次 render 都会重建表格）
@@ -306,6 +318,10 @@ function evaluate() {
   const usable = rows;                                 // 不按孕周过滤
   try {
     render({ rows, ranked: [...usable].sort((a, b) => b.final - a.final), parents });
+    // 记录"这一组参数被看了一次"——这样在百度统计的「事件分析」里，
+    // 每个客户的预产期+窗口+生肖就是一行，能看出谁的链接被打开过、打开几次。
+    // 同时它也让「打开页面 → 点解锁 → 打开付款框」这条漏斗能连起来。
+    track('page', 'view', [due, from, to, picked.join(',') || '无生肖'].join('|'));
   } catch (err) {
     // 渲染中途出错时把原因显示出来，而不是留一个半截页面
     document.getElementById('result').innerHTML =
@@ -449,8 +465,10 @@ function showUnlock() {
   if (zhint) {
     zhint.addEventListener('click', () => {
       if (UNLOCKED) return;
+      track('unlock', 'click', '生肖区');
       const ub = document.getElementById('unlockbox');
-      if (ub.style.display !== 'block') showUnlock();
+      const first = ub.style.display !== 'block';
+      if (first) { showUnlock(); track('unlock', 'paybox_open', '生肖区'); }
       ub.scrollIntoView({ block: 'center' });
     });
   }
