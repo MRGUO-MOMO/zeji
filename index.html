@@ -181,10 +181,15 @@
   /* 底部行动区 */
   .cta{display:none;margin-top:26px;padding:18px;background:var(--card);
        border:1px solid var(--line);border-radius:var(--radius);text-align:center}
-  /* 解锁钩子只给「还没解锁的人」看 —— 条件不能写 body.locked，
+  /* 解锁钩子：只给「还没解锁的人」看 —— 条件不能写 body.locked，
      因为首页模式（不带 lock=1）就没有 locked 类，那样入口会两边都不显示。 */
   body:not(.unlocked) .cta{display:block}
-  body:not(.unlocked) #ctaShare{display:none}
+  /* 传播出口「我也要算我自己的 →」的显示条件：
+       · 已解锁的人        → 显示（她拿着结果，顺手能分享）
+       · 锁定页未解锁的人  → 显示（这是她拿到的专属链接，裂变只能靠这里）
+       · 首页未解锁的人    → 不显示（人已经在首页了，这个出口没意义） */
+  body.unlocked #ctaShare{display:block}
+  body.locked:not(.unlocked) #ctaShare{display:block}
   .cta .lead{font-size:13.5px;color:var(--ink2);margin:0 0 14px}
   .btn-ghost{display:block;width:100%;padding:13px;font-size:15px;font-weight:600;
              font-family:inherit;border-radius:11px;cursor:pointer;margin-bottom:10px;
@@ -241,10 +246,6 @@
       <div class="zodiacs" id="zodiacs"></div>
       <div class="lockhint">🔒 这是收费项：解锁后填入你和先生的生肖，会<b>重算一遍</b> —— 把这段时间里正冲到你或先生的日子标出来、并排到后面。<br>它和下面的时辰吉凶一起，一个价打包给。</div>
     </div>
-    <div class="field">
-      <label>今天（用于判断预约是否来得及）</label>
-      <input type="date" id="today">
-    </div>
     <button class="btn" id="go" disabled>开始评估</button>
     <div class="hint" id="status">正在加载数据…</div>
   </div>
@@ -269,7 +270,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="pay-config.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

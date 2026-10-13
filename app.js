@@ -259,7 +259,8 @@ function evaluate() {
   const due = document.getElementById('due').value;
   const from = document.getElementById('from').value;
   const to = document.getElementById('to').value;
-  const today = document.getElementById('today').value || null;
+  // （原来这里读了一个 today，用来算「距今天还来得及吗」—— 那句话是替医院判断排期，
+  //   已随医院逻辑一起删除。输入框也一并去掉了，别再读一个不存在的元素。）
   const picked = [...document.querySelectorAll('.zodiac:checked')].map(x => x.value);
   // ⚠️ 未解锁时，生肖一律不参与计算（parents 传空）。
   //    否则会出现「冲煞列锁着，但分数已按生肖扣过、展开的理由里还写着
@@ -401,7 +402,8 @@ function showUnlock() {
         <p class="note">页面更新过，之前生成的链接不再有效。麻烦找发你链接的人重新要一份。</p></div>`;
     return;
   }
-  document.getElementById('today').value = q.get('today') || todayLocal();
+  // 「今天」这个输入框已删除：它原来只服务于「距今天还来得及预约吗」那句话，
+  // 而那句话是在替医院判断排期，已随医院逻辑一起删掉。留个输入框反而误导。
   document.getElementById('due').value = q.get('due') || '2026-09-30';
   document.getElementById('from').value = q.get('from') || '2026-09-21';
   document.getElementById('to').value = q.get('to') || '2026-09-27';
