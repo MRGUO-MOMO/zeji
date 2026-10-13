@@ -260,7 +260,12 @@ function evaluate() {
   const from = document.getElementById('from').value;
   const to = document.getElementById('to').value;
   const today = document.getElementById('today').value || null;
-  const parents = [...document.querySelectorAll('.zodiac:checked')].map(x => x.value);
+  const picked = [...document.querySelectorAll('.zodiac:checked')].map(x => x.value);
+  // ⚠️ 未解锁时，生肖一律不参与计算（parents 传空）。
+  //    否则会出现「冲煞列锁着，但分数已按生肖扣过、展开的理由里还写着
+  //    『这天鼠日冲马——正冲属马的家长』」—— 用户实测发现，等于锁了个寂寞。
+  //    冲煞是付费项，那就必须连算分和理由一起挡住，不能只挡那一格显示。
+  const parents = UNLOCKED ? picked : [];
   if (!due || !from || !to) { alert('请填完预产期和窗口起止日期'); return; }
   if (from > to) { alert('窗口起始日期不能晚于结束日期'); return; }
 
@@ -400,14 +405,15 @@ function showUnlock() {
   document.getElementById('due').value = q.get('due') || '2026-09-30';
   document.getElementById('from').value = q.get('from') || '2026-09-21';
   document.getElementById('to').value = q.get('to') || '2026-09-27';
-  if (q.has('z')) {
+  if (UNLOCKED && q.has('z')) {
     const vals = q.get('z') ? q.get('z').split(',') : [];
     document.querySelectorAll('.zodiac').forEach(c => (c.checked = vals.includes(c.value)));
   } else {
-    // 默认「一个都不勾」。
-    // 以前默认勾前两个（鼠、牛），结果免费版的人在没选任何生肖的情况下，
-    // 排名已经按鼠、牛扣过冲煞分了 —— 和他自己心里的预期对不上，会被当成算错。
-    // 免费版本来就看不到冲煞，那就不该按生肖扣分。
+    // 默认「一个都不勾」，且未解锁时即使 URL 带了 z= 也不回显。
+    //   ① 以前默认勾前两个（鼠、牛），结果免费版的人在没选任何生肖的情况下，
+    //      排名已经按鼠、牛扣过冲煞分了 —— 和她心里的预期对不上，会被当成算错。
+    //   ② 未解锁时回显生肖（比如专属链接带 z=马,兔）更糟：她看到自己的生肖被勾上，
+    //      会以为结果已经按她的生肖算过了，其实那一层锁着没算。
     document.querySelectorAll('.zodiac').forEach(c => (c.checked = false));
   }
 
