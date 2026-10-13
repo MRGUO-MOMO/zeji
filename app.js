@@ -224,6 +224,9 @@ function render(res) {
     <p class="note">表中星期与日期照实列出，不做「周末/节假日能不能安排」的判断，同样是这个原因。</p>
     <p class="note">子时（23:00–01:00）与午时（11:00–13:00）是极阴极阳的时辰，传统择日里避开；妇产科医生也普遍不排这两个时段（子时人体最疲劳，手术风险偏高）。</p>
     <p class="note">最终日期与时辰请以产科医生和手术室排期为准，本结果仅作传统民俗参考。</p>
+    <p class="note" style="margin-top:14px">
+      <a class="plink" href="explain.html">这份结果是怎么算出来的 →</a>
+    </p>
   </div>`);
   const el = document.getElementById('result');
   el.innerHTML = out.join('');
