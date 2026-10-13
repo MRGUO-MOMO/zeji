@@ -156,11 +156,11 @@ function renderTable(rows) {
     <thead><tr>
     <th>日期</th><th>星期</th><th>吉凶</th><th>孕周</th><th>冲煞</th>
   </tr></thead><tbody>${rows.map((r, i) => {
-    // 冲煞这一列是收费点：免费版只显示锁定标记。
-    // 冲煞本身对外可以查到，但「有没有冲到你们两个人」必须知道生肖才能算。
+    // 冲煞这一列是收费点：免费版只显示锁定标记 —— 而且这个标记本身就是解锁入口。
+    // （原先入口只在页面最底部，用户滑到方案 A 拿到答案就走了，根本到不了那儿。）
     const clash = UNLOCKED
       ? `冲${r.day.cz}${r.hitClash ? ' <b class="hit">冲到你</b>' : ''}`
-      : '🔒';
+      : '<span class="lockcell">🔒<small>点此解锁</small></span>';
     // 每一天都能点开看原因 —— 表格里 17 天，不该只有方案卡里那 3 天有解释
     const rs = [
       ...r.a.reasonsFor.map(x => ['ok', x]),
@@ -202,7 +202,7 @@ function renderPlan(letter, r, parents) {
         ${x.why ? `<span class="hr-r">${esc(x.why)}</span>` : (x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : '')}</div>`).join('')}
       <div class="note">吉凶是三样叠加出来的：黄道黑道本身、跟当天是否相冲、以及是不是极阴极阳。理由写在每一行后面。哪个时段你们方便，你们自己定。</div>
     </div>`
-    : `<div class="hourlock">🔒 <b>这一天的时辰吉凶已锁定</b> —— 解锁后会逐个列出每个时辰的吉凶和理由，你可以拿着它去跟产科对档期。</div>`}
+    : `<div class="hourlock clickable">🔒 <b>这一天的时辰吉凶已锁定</b> —— 解锁后会逐个列出每个时辰的吉凶和理由，你可以拿着它去跟产科对档期。<br><b>点这里解锁 →</b></div>`}
   </div>`;
 }
 
@@ -227,6 +227,21 @@ function render(res) {
   </div>`);
   const el = document.getElementById('result');
   el.innerHTML = out.join('');
+
+  // ── 解锁入口：页面上每一个锁标记都能点 ──────────────────────────
+  // 原先只有一个入口，在整页最底部。用户滑到方案 A（已经拿到答案）就走了，
+  // 根本到不了那里 —— 真实反馈："解锁入口在页面最底部"。
+  // 现在表格的 🔒、时辰区的锁定提示、生肖区的提示，点任何一个都弹付款框。
+  const openPay = () => {
+    const box = document.getElementById('unlockbox');
+    if (box.style.display !== 'block') showUnlock();
+    // 瞬时滚动。不要用 behavior:'smooth' —— 它依赖 requestAnimationFrame，
+    // 无头环境不产生帧会把 renderer 卡死（实测导致后续所有 CDP 调用超时）。
+    box.scrollIntoView({ block: 'center' });
+  };
+  el.querySelectorAll('.lockcell, .hourlock.clickable').forEach(x => {
+    x.addEventListener('click', openPay);
+  });
 
   // 表格行点开看原因（事件委托绑在 tbody 上，因为每次 render 都会重建表格）
   el.querySelectorAll('.tbl tbody').forEach(tb => {
@@ -426,6 +441,19 @@ function showUnlock() {
       ub.scrollIntoView({ block: 'center' });
     }, true);
   });
+
+  // 生肖区那句「🔒 这是收费项…」也是解锁入口。
+  // 注意它写在 index.html 里、不在 #result 内，所以 render() 里的委托覆盖不到它，
+  // 必须在这里单独绑 —— 和 .zchip 的点击走同一条路。
+  const zhint = document.getElementById('zhint');
+  if (zhint) {
+    zhint.addEventListener('click', () => {
+      if (UNLOCKED) return;
+      const ub = document.getElementById('unlockbox');
+      if (ub.style.display !== 'block') showUnlock();
+      ub.scrollIntoView({ block: 'center' });
+    });
+  }
 
   try {
     await loadData();

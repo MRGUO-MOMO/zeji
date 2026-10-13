@@ -75,6 +75,11 @@
   .tbl tr.exp > td{white-space:normal}
   .tbl td{word-break:break-word;overflow-wrap:anywhere}
   .tbl b.hit{color:#b0553f;font-weight:600;white-space:nowrap}
+  /* 表格里每一个 🔒 都是解锁入口 —— 用户滑到哪儿都能付钱，
+     不用先滑到页面最底部（真实反馈：入口只在底部等于没有入口）。 */
+  .lockcell{cursor:pointer;color:#8d8681;font-size:13px}
+  .lockcell:hover{color:var(--accent)}
+  .lockcell small{font-size:10px;color:var(--accent);display:block;line-height:1.2}
   .tbl th{background:#f5f2ef;color:var(--ink2);font-weight:600;font-size:12.5px;
           padding:9px 6px;text-align:left;white-space:nowrap}
   .tbl td{padding:10px 6px;border-top:1px solid var(--line);vertical-align:middle}
@@ -171,6 +176,9 @@
   .hourlock{font-size:12.5px;color:var(--ink3);line-height:1.6;margin-top:12px;
             padding-top:12px;border-top:1px solid var(--line)}
   .hourlock b{color:var(--accent)}
+  /* 时辰区和生肖区的锁定提示同样可点 —— 都是解锁入口 */
+  .hourlock.clickable,.lockhint.clickable{cursor:pointer;border-radius:9px}
+  .hourlock.clickable:hover,.lockhint.clickable:hover{background:#f6edea}
 
   /* 折叠的方案（免费版只给第一个完整的） */
   .folded{background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);
@@ -244,7 +252,7 @@
     <div class="field">
       <label>父母生肖（用于避开相冲的日子）</label>
       <div class="zodiacs" id="zodiacs"></div>
-      <div class="lockhint">🔒 这是收费项：解锁后填入你和先生的生肖，会<b>重算一遍</b> —— 把这段时间里正冲到你或先生的日子标出来、并排到后面。<br>它和下面的时辰吉凶一起，一个价打包给。</div>
+      <div class="lockhint clickable" id="zhint">🔒 这是收费项：解锁后填入你和先生的生肖，会<b>重算一遍</b> —— 把这段时间里正冲到你或先生的日子标出来、并排到后面。<br><b>点这里解锁 →</b></div>
     </div>
     <button class="btn" id="go" disabled>开始评估</button>
     <div class="hint" id="status">正在加载数据…</div>
@@ -270,7 +278,7 @@
   </footer>
 
 </div>
-<script src="pay-config.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="pay-config.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>
