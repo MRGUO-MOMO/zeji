@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  /* 封面单独出图：1080×1440（小红书 3:4 标准）。
+     配色沿用工具页面本身的那套（朱红 #9c3d2e + 米白 #faf9f7），
+     让封面和后面 9 张截图看起来是一套东西。 */
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1440px}
+  body{
+    background:#faf9f7;
+    font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:#1f1d1b; display:flex; flex-direction:column;
+    padding:72px 76px 0; overflow:hidden;
+  }
+  .eyebrow{
+    font-size:28px; letter-spacing:.28em; color:#9c3d2e; font-weight:600;
+    margin-bottom:30px;
+  }
+  h1{font-size:82px; line-height:1.2; font-weight:800; letter-spacing:-.01em}
+  h1 em{font-style:normal; color:#9c3d2e}
+  .sub{margin-top:30px; font-size:34px; line-height:1.55; color:#5c5754; font-weight:400}
+  .rule{width:120px;height:6px;background:#9c3d2e;margin:36px 0 0;border-radius:4px}
+
+  .box{
+    margin-top:40px; background:#fff; border:2px solid #e8e3dd; border-radius:26px;
+    padding:34px 40px 30px;
+  }
+  .row{display:flex; align-items:baseline; justify-content:space-between; padding:15px 4px}
+  .row + .row{border-top:2px dashed #efe9e3}
+  .d{font-size:38px; font-weight:600}
+  .d small{font-size:27px;color:#8d8681;font-weight:400;margin-left:12px}
+  .tag{font-size:29px;font-weight:700;padding:7px 20px;border-radius:13px}
+  .t1{background:#e6f2ea;color:#2f7d4f}
+  .t2{background:#fdecea;color:#c0392b}
+
+  .foot{margin-top:auto; padding:0 0 58px; font-size:28px; color:#8d8681; line-height:1.6}
+  .foot b{color:#1f1d1b; font-weight:600}
+</style>
+</head>
+<body>
+  <div class="eyebrow">剖 腹 产 择 日</div>
+
+  <h1>医生给了我<br>15 天挑日子<br>排完发现<em>只有 3 天</em><br><em>是「首选」</em></h1>
+
+  <div class="sub">还有 4 天，传统规矩里是<b>该避开</b>的。</div>
+  <div class="rule"></div>
+
+  <div class="box">
+    <div class="row"><span class="d">11-16<small>周一</small></span><span class="tag t1">首选 100</span></div>
+    <div class="row"><span class="d">11-17<small>周二</small></span><span class="tag t1">首选 100</span></div>
+    <div class="row"><span class="d">11-26<small>周四</small></span><span class="tag t1">首选 100</span></div>
+    <div class="row"><span class="d">11-15 · 11-18 · 11-22 · 11-27</span><span class="tag t2">不建议</span></div>
+  </div>
+
+  <div class="foot">
+    预产期 11/28　医生给的窗口 11/14–11/28<br>
+    每天、每个时辰都排了一遍　<b>后面 9 张是完整结果 →</b>
+  </div>
+</body>
+</html>
