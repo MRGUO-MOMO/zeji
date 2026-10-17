@@ -25,20 +25,23 @@ const LIU_CHONG = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 
 //   「需确认/较忙/正常」，已删除：那是在猜医院，而且猜错了会误导她。）
 
 /* ---------------------------------- 日评估 --------------------------------- */
+/* 冲到家长 → 硬性排除（封顶到「不建议」）。
+   传统择日里「日冲命」是「忌」，不是打个折。
+   实测按 -12 扣分时：64% 的情况跨不过档位边界（边界间隔 14 分），
+   用户付了钱看到的结论和免费版一模一样 —— 那这个收费项就是假的。 */
+const CLASH_CEILING = 40;
+
 function assessDay(day, parents) {
-  // ⚠️ 顺序很关键：**先封顶，再扣「冲家长」的分**。
-  //
-  // 原来写的是 min(ceil, base - 12*cc) —— 只要 base 高于封顶，扣的分就被
-  // 封顶吃掉了。实测 460 天里有 172 天「冲到了却一分没扣」。
-  // 例：2026-09-28 base 94.2、封顶 73，选「猪」之后仍然是 73。
-  // 现在先算出封顶后的分，再减 —— 冲到了就一定掉分。
   const cc = parents.filter(p => p === day.cz).length;
-  const capped = Math.min(day.ceil, day.base);
-  const score = Math.max(0, Math.trunc(capped - 12 * cc));
+  let capped = Math.min(day.ceil, day.base);
+  if (cc) capped = Math.min(capped, CLASH_CEILING);   // 硬性排除
+  const score = Math.max(0, Math.trunc(capped));
 
   const reasonsFor = [...(day.rf || [])];
   const reasonsAgainst = [...(day.ra || [])];
-  if (cc) reasonsAgainst.push(`这天「${day.clash}」——正冲属${day.cz}的家长`);
+  if (cc) {
+    reasonsAgainst.unshift(`这天「${day.clash}」——正冲属${day.cz}的家长，按传统规矩直接避开`);
+  }
 
   return { score, tier: tierOf(score), reasonsFor, reasonsAgainst };
 }
