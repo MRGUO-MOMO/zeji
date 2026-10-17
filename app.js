@@ -26,11 +26,15 @@ const LIU_CHONG = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 
 
 /* ---------------------------------- 日评估 --------------------------------- */
 function assessDay(day, parents) {
-  // 只叠加「冲家长」。注意比的是 day.cz（冲字后面的生肖），
-  // 不是子串匹配 —— "兔日冲鸡" 里同时含兔和鸡，子串匹配会罚错人。
+  // ⚠️ 顺序很关键：**先封顶，再扣「冲家长」的分**。
+  //
+  // 原来写的是 min(ceil, base - 12*cc) —— 只要 base 高于封顶，扣的分就被
+  // 封顶吃掉了。实测 460 天里有 172 天「冲到了却一分没扣」。
+  // 例：2026-09-28 base 94.2、封顶 73，选「猪」之后仍然是 73。
+  // 现在先算出封顶后的分，再减 —— 冲到了就一定掉分。
   const cc = parents.filter(p => p === day.cz).length;
-  const base = day.base - 12 * cc;
-  const score = Math.max(0, Math.trunc(Math.min(day.ceil, base)));
+  const capped = Math.min(day.ceil, day.base);
+  const score = Math.max(0, Math.trunc(capped - 12 * cc));
 
   const reasonsFor = [...(day.rf || [])];
   const reasonsAgainst = [...(day.ra || [])];
