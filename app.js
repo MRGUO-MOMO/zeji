@@ -53,16 +53,24 @@ function assessDay(day, parents) {
   if (ti >= 0) {
     const taboo = reasonsAgainst[ti];
     const gg = day.gg || [];
-    const orig = Math.max(0, Math.trunc(Math.min(day.ceil, day.base)));
+    // days.json 里的这条理由可能已经被 Python 端改写过（以「这天写着」开头）。
+    // 那种情况只做封顶、不再包一层 —— 否则会出现
+    // 「这天写着「这天写着「忌求子」——…」——…」这种双重嵌套。
+    const enriched = /^这天写着/.test(String(taboo));
     if (gg.includes("天赦")) {
       // 天赦赦的是一切，不是化煞 —— 传统「天赦日，百无禁忌」
-      reasonsAgainst[ti] = `这天写着「${taboo}」——但当天有「天赦」，传统上「百无禁忌」，可以化解，所以不因此降档`;
+      if (!enriched) {
+        reasonsAgainst[ti] = `这天写着「${taboo}」——但当天有「天赦」，传统上「百无禁忌」，可以化解，所以不因此降档`;
+      }
     } else {
       capped = Math.min(capped, BIRTH_TABOO_CEILING);
-      const de = gg.filter(g => DE_GODS.includes(g));
-      reasonsAgainst[ti] = de.length
-        ? `这天写着「${taboo}」——传统上直接忌生孩子，所以最高只排到「可选」（这天本来有「${de.join('、')}」，本来 ${orig} 分，是被这一条压下来的）`
-        : `这天写着「${taboo}」——传统上直接忌生孩子（剖腹产就是添丁），所以最高只排到「可选」`;
+      if (!enriched) {
+        const de = gg.filter(g => DE_GODS.includes(g));
+        const orig = Math.max(0, Math.trunc(Math.min(day.ceil, day.base)));
+        reasonsAgainst[ti] = de.length
+          ? `这天写着「${taboo}」——传统上直接忌生孩子，所以最高只排到「可选」（这天本来有「${de.join('、')}」，本来 ${orig} 分，是被这一条压下来的）`
+          : `这天写着「${taboo}」——传统上直接忌生孩子（剖腹产就是添丁），所以最高只排到「可选」`;
+      }
     }
   }
 
