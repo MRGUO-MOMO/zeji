@@ -80,9 +80,16 @@ function rankHours(day, dayScore, parents) {
     // lucky 用 h.lv（综合吉凶：黄道黑道 + 是否与当日相冲 + 是否极阴极阳），
     // 不能用 h.l（cnlunar 原始判定）—— 否则会出现绿「吉」旁边写着
     // 「与当日相冲」「传统上避开」，自相矛盾。
-    // h.lv 是后加的字段，旧数据没有时退回 h.l。
-    return { idx: h.i, label: h.n, lucky: h.lv || h.l, shizhu: h.b, relTxt: h.r || '',
-             why: h.w || '', extreme: h.x, hz, hit,
+    //
+    // ⚠️ 但 h.lv 不含「冲家长」。以前只扣 10 分、标签照旧是「吉」，
+    // 结果 6297 个吉时里有 841 个（13.4%）其实正冲家长本人——客户会
+    // 拿着「酉时吉」去跟医生说下午五点。所以命中家长就直接判「凶」。
+    const lucky = hit ? '凶' : (h.lv || h.l);
+    const why = hit
+      ? `这个时辰冲属${hz}的家长——传统上避开${h.w ? '；' + h.w : ''}`
+      : (h.w || '');
+    return { idx: h.i, label: h.n, lucky, shizhu: h.b, relTxt: h.r || '',
+             why, extreme: h.x, hz, hit,
              score: Math.max(0, Math.min(100, s)) };
   });
 }
@@ -226,13 +233,13 @@ function renderPlan(letter, r, parents) {
   const hrs = hourList(day, a.score, parents);
   const good = hrs.filter(x => x.lucky === '吉').length;
   return `<div class="plan">
-    <div class="plan-h"><span class="badge">方案 ${letter}${letter === 'A' ? ' · 首选' : ''}</span>
+    <div class="plan-h"><span class="badge">方案 ${letter} · ${a.tier}</span>
       <span class="plan-date">${day.d}（${day.wd}）</span></div>
     <div class="plan-sub">${esc(day.ly)}${esc(day.l)}　${esc(day.g)}</div>
     <div class="kv"><span>吉凶</span><b class="t-${a.tier}">${a.tier} · ${a.score} 分</b></div>
     <ul class="reasons">${a.reasonsFor.slice(0, 3).map(x => `<li class="ok">${esc(x)}</li>`).join('')}
       ${a.reasonsAgainst.slice(0, 3).map(x => `<li class="no">${esc(x)}</li>`).join('')}</ul>
-    <div class="kv"><span>二十八宿</span><b>${esc(day.star)}</b></div>
+    <div class="kv"><span>二十八宿（仅参考）</span><b>${esc(day.star)}</b></div>
     <div class="kv"><span>孕周</span><b>${r.gest.ok ? '✅' : '⛔'} ${esc(r.gest.msg)}</b></div>
     ${UNLOCKED ? `<div class="hrs">
       <div class="hrs-t">这一天的时辰（${good} 个吉时，其余为凶）</div>
@@ -240,7 +247,7 @@ function renderPlan(letter, r, parents) {
         <b>${esc(x.label)}</b>
         <span class="hr-b">时柱 ${esc(x.shizhu)}</span>
         ${x.why ? `<span class="hr-r">${esc(x.why)}</span>` : (x.relTxt ? `<span class="hr-r">${esc(x.relTxt)}</span>` : '')}</div>`).join('')}
-      <div class="note">吉凶是三样叠加出来的：黄道黑道本身、跟当天是否相冲、以及是不是极阴极阳。理由写在每一行后面。哪个时段你们方便，你们自己定。</div>
+      <div class="note">吉凶是四样叠加出来的：黄道黑道本身、跟当天是否相冲、是不是极阴极阳，以及这个时辰冲不冲你们俩。理由写在每一行后面。哪个时段你们方便，你们自己定。</div>
     </div>`
     : `<div class="hourlock clickable">🔒 <b>这一天的时辰吉凶已锁定</b> —— 解锁后会逐个列出每个时辰的吉凶和理由，你可以拿着它去跟产科对档期。<br><b>点这里解锁 →</b></div>`}
   </div>`;
