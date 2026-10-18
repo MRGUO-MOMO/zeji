@@ -30,18 +30,29 @@ const LIU_CHONG = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 
    实测按 -12 扣分时：64% 的情况跨不过档位边界（边界间隔 14 分），
    用户付了钱看到的结论和免费版一模一样 —— 那这个收费项就是假的。 */
 const CLASH_CEILING = 40;
+/* 「忌添丁」「忌求子」—— 字面就是忌生孩子。原来走的是扣分（-6），
+   一个 100 分的日子扣完还是「首选」。改成封顶到「次选」。 */
+const BIRTH_TABOO_CEILING = 44;
 
 function assessDay(day, parents) {
   const cc = parents.filter(p => p === day.cz).length;
   let capped = Math.min(day.ceil, day.base);
   if (cc) capped = Math.min(capped, CLASH_CEILING);   // 硬性排除
-  const score = Math.max(0, Math.trunc(capped));
 
   const reasonsFor = [...(day.rf || [])];
   const reasonsAgainst = [...(day.ra || [])];
   if (cc) {
     reasonsAgainst.unshift(`这天「${day.clash}」——正冲属${day.cz}的家长，按传统规矩直接避开`);
   }
+
+  // 忌添丁 / 忌求子：封顶到「次选」，并把理由说清楚
+  const ti = reasonsAgainst.findIndex(r => /忌添丁|忌求子/.test(String(r)));
+  if (ti >= 0) {
+    capped = Math.min(capped, BIRTH_TABOO_CEILING);
+    reasonsAgainst[ti] = `这天写着「${reasonsAgainst[ti]}」——传统上直接忌生孩子（剖腹产就是添丁），所以最高只排到「次选」`;
+  }
+
+  const score = Math.max(0, Math.trunc(capped));
 
   return { score, tier: tierOf(score), reasonsFor, reasonsAgainst };
 }
